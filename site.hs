@@ -38,13 +38,13 @@ myConf = MyConfiguration
     { numberOfRecentPosts = 3
     , parserState         = defaultHakyllParserState
     , writerOptions       = defaultHakyllWriterOptions
-    , atomFeed            = Just myFeed
+    , atomFeed            = Just myFeedConf
     }
 
 -- | Atom feed configuration.
 --
-myFeed :: FeedConfiguration
-myFeed = FeedConfiguration
+myFeedConf :: FeedConfiguration
+myFeedConf = FeedConfiguration
   { feedTitle       = "Warm fuzzy thing by 8c6794b6"
   , feedDescription = "Warm and fuzzy"
   , feedAuthorName  = "8c6794b6"
@@ -55,10 +55,11 @@ myFeed = FeedConfiguration
 --
 ghPageWith :: MyConfiguration -> Rules
 ghPageWith conf = do
-    -- Images and static files
-    ["favicon.ico"]           --> copy
-    ["img/**", "images/**", "audio/**"]   --> copy
-    ["static/**", "files/**"] --> copy
+    -- Images, audios and static files
+    ["favicon.ico"]            --> copy
+    ["img/**", "images/**"]    --> copy
+    ["audio/**"]               --> copy
+    ["static/**", "files/**"]  --> copy
     ["js/**", "javascript/**"] --> copy
 
     -- CSS files
