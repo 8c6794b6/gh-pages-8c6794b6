@@ -6,7 +6,8 @@ Maintainer  : 8c6794b6@gmail.com
 Stability   : experimental
 Portability : portable
 
-Generates github page.
+Generates github page contents.
+
 -}
 module Main where
 
@@ -15,18 +16,11 @@ import Text.Pandoc (ParserState, WriterOptions)
 import Hakyll
 
 main :: IO ()
-main = hakyll $ smallBlogWith defaultSmallBlogConfiguration
-    { atomFeed = Just FeedConfiguration
-        { feedTitle       = "Warm fuzzy thing by 8c6794b6"
-        , feedDescription = "Warm and fuzzy"
-        , feedAuthorName  = "8c6794b6"
-        , feedRoot        = "http://8c6794b6.github.com"
-        }
-    }
+main = hakyll $ ghPageWith myConf
 
--- | Configuration datatype for the 'smallBlog' ruleset
+-- | Configuration datatype for ghpage
 --
-data SmallBlogConfiguration = SmallBlogConfiguration
+data MyConfiguration = MyConfiguration
     { -- | Number of recent posts that are available
       numberOfRecentPosts :: Int
     , -- | Parser state for pandoc, i.e. read options
@@ -37,28 +31,33 @@ data SmallBlogConfiguration = SmallBlogConfiguration
       atomFeed            :: Maybe FeedConfiguration
     } deriving (Show)
 
--- | Defaults for 'SmallBlogConfiguration'
+-- | Defaults for 'MyConfiguration'
 --
-defaultSmallBlogConfiguration :: SmallBlogConfiguration
-defaultSmallBlogConfiguration = SmallBlogConfiguration
+myConf :: MyConfiguration
+myConf = MyConfiguration
     { numberOfRecentPosts = 3
     , parserState         = defaultHakyllParserState
     , writerOptions       = defaultHakyllWriterOptions
-    , atomFeed            = Nothing
+    , atomFeed            = Just myFeed
     }
 
--- | A default configuration for a small blog
+-- | Atom feed configuration.
 --
-smallBlog :: Rules
-smallBlog = smallBlogWith defaultSmallBlogConfiguration
+myFeed :: FeedConfiguration
+myFeed = FeedConfiguration
+  { feedTitle       = "Warm fuzzy thing by 8c6794b6"
+  , feedDescription = "Warm and fuzzy"
+  , feedAuthorName  = "8c6794b6"
+  , feedRoot        = "http://8c6794b6.github.com"
+  }
 
--- | Version of 'smallBlog' which allows setting a config
+-- | Version of 'ghPage' which allows setting a config
 --
-smallBlogWith :: SmallBlogConfiguration -> Rules
-smallBlogWith conf = do
+ghPageWith :: MyConfiguration -> Rules
+ghPageWith conf = do
     -- Images and static files
     ["favicon.ico"]           --> copy
-    ["img/**", "images/**"]   --> copy
+    ["img/**", "images/**", "audio/**"]   --> copy
     ["static/**", "files/**"] --> copy
     ["js/**", "javascript/**"] --> copy
 

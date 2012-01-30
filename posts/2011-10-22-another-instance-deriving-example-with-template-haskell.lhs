@@ -1,0 +1,258 @@
+---
+title: Another instance deriving example with template haskell
+author: 8c6794b6
+date: Octover 22, 2011
+tags: haskell, templatehaskell
+description: Deriving instance with passing member functions
+---
+When I was writing small template haskell helper for deriving numeric
+classes, couldn't find an example for deriving instance with passing
+functions.  Deriving a type class with helper functions means, for
+instance, we write below code in client module:
+
+    | deriveNum ''S 'i2s 'unaryS 'binaryS
+
+to get this result:
+
+    | instance Num S where
+    |   (+) = binaryS "+"
+    |   (*) = binaryS "*"
+    |   (-) = binaryS "-"
+    |   negate = unaryS "negate"
+    |   abs = unaryS "abs"
+    |   signum = unaryS "signum"
+    |   fromInteger = i2s
+
+where `i2s`, `unaryS`, and `binaryS` are defined in client side code.
+
+Template haskell helper for deriving instance seems quite common, used
+in couple packages like
+[safecopy](http://hackage.haskell.org/package/safecopy).
+
+There is a
+[haskell wiki page showing template haskell example for deriving instance](http://www.haskell.org/haskellwiki/Template_haskell/Instance_deriving_example),
+however, this was not the case I was looking.  Using
+[Data.Derive](http://community.haskell.org/~ndm/darcs/derive/derive.htm)
+might help, but in this case, seemed a bit different.
+
+> {-# LANGUAGE TemplateHaskell #-}
+> {-# LANGUAGE OverloadedStrings #-}
+>
+> module THDeriveExample where
+>
+> import Control.Monad
+> import Data.String
+> import Language.Haskell.TH
+
+In client side module, suppose that we're writing a string representation for
+numeric expressions:
+
+    | newtype S = S {unS :: String}
+    |
+    | instance Show S where
+    |   show = unS
+    |
+    | instance Eq S where
+    |   a == b = unS a == unS b
+    |
+    | sint :: Int -> S
+    | sint x = S $ show x
+    |
+    | sabs :: S -> S
+    | sabs a = S $ concat ["(abs", unS a, ")"]
+    |
+    | sadd :: S -> S -> S
+    | sadd a b = S $ concat ["(", unS a, " + ", unS b, ")"]
+
+... and so on. It seems useful if we can use operators '(+)', '(*)', '(-)'
+directly. Instead of defining smul, snegate .. etc, using helper
+functions to do this.
+
+    | unaryS :: String -> S -> S
+    | unaryS op a = S $ concat ["(", op, unS a, ")"]
+    |
+    | binaryS :: String -> S -> S -> S
+    | binaryS op a b = S $ concat ["(", unS a, " ", op, " ", unS b, ")"]
+    |
+    | i2s :: Integer -> S
+    | i2s a = S $ show (fromInteger a)
+
+As shown above, calling the template haskell helper
+
+    | deriveNum ''S 'i2s 'unaryS 'binaryS
+
+gives output something similar to this:
+
+    | instance Num S where
+    |   (+) = binaryS "+"
+    |   (*) = binaryS "*"
+    |   (-) = binaryS "-"
+    |   negate = unaryS "negate"
+    |   abs = unaryS "abs"
+    |   signum = unaryS "signum"
+    |   fromInteger = i2s
+
+So that we can write expressions and view the result:
+
+    | *Main> unS ((3 + 10) * 8)
+    | "((3 + 10) * 8)"
+
+We can write deriving definitions manually, but when the newtype
+increase, the template haskell instance deriver helps us a
+lot. Suppose we want a expression node tree instead of raw string
+representation.
+
+    | data Tree = Empty | Node String [Tree]
+    | data T = T {unT :: Tree}
+
+and in addition to Num, we might want to derive Floating.
+I don't want to do this manually anymore.
+
+    | class Fractional a => Floating a where
+    |   pi :: a
+    |   exp :: a -> a
+    |   sqrt :: a -> a
+    |   log :: a -> a
+    |   (**) :: a -> a -> a
+    |   logBase :: a -> a -> a
+    |   sin :: a -> a
+    |   tan :: a -> a
+    |   cos :: a -> a
+    |   asin :: a -> a
+    |   atan :: a -> a
+    |   acos :: a -> a
+    |   sinh :: a -> a
+    |   tanh :: a -> a
+    |   cosh :: a -> a
+    |   asinh :: a -> a
+    |   atanh :: a -> a
+    |   acosh :: a -> a
+
+As written above, usage of the template haskell function we want to write is:
+
+    | deriveNum ''Constuctor 'lifter 'unary 'binary
+
+and it should generate:
+
+    | instance Num ''Constructor where
+    |   (+) = 'binary "+"
+    |   (*) = 'binary "*"
+    |   (-) = 'binary "-"
+    |   negate = 'unary "negate"
+    |   abs = 'unary "abs"
+    |   signum = 'unary "signum"
+    |   fromInteger = 'liter
+
+Firstly, a function to view TH expression in pretty format.
+
+> ppQ :: Ppr a => Q a -> IO ()
+> ppQ x = putStrLn =<< runQ ((show . ppr) `fmap` x)
+
+and a dumper:
+
+> showQ :: Show a => Q a -> IO ()
+> showQ x = putStrLn =<< runQ (show `fmap` x)
+
+Using `instanceD` from
+[Language.Haskell.TH](http://hackage.haskell.org/packages/archive/template-haskell/latest/doc/html/Language-Haskell-TH.html#v:instanceD)
+to define instance deriving.
+
+    | instanceD :: CxtQ -> TypeQ -> [DecQ] -> DecQ
+
+Below is the body of main deriving helper. We will fill in the
+arguments passed to `instanceD'`, each by each.
+
+> deriveNum :: Name -> Name -> Name -> Name -> Q [Dec]
+> deriveNum constr lifter unary binary = do
+>   let instanceD' c t ds = fmap (:[]) (instanceD c t ds)
+>       contexts = cxt []
+>       typ = mkNumTyp constr
+>   decs <- mkNumDecs lifter unary binary
+>   instanceD' contexts typ decs
+
+The desired result type is `Q [Dec]`, not `Q Dec`. So wrapping as single
+element list with `fmap` and `(:[])`. There is no constraints used in result
+output, list passed to `cxt` is empty.
+
+We want a function:
+
+> mkNumTyp :: Name -> TypeQ
+
+so that it will represent `Num S` part of below expression:
+
+    | instance Num S where
+
+Using expression quotatin with `t` prefix, to get `TypeQ` result type.
+
+> mkNumTyp con = [t| $(conT ''Num) $(conT con) |]
+
+Viewing the result:
+
+    | *THDeriveExample> ppQ $ mkNumTyp ''Int
+    | GHC.Num.Num GHC.Types.Int
+
+It is verbose, but that is what we want.
+
+    | *THDeriveExample> showQ $ mkNumTyp ''Int
+    | AppT (ConT GHC.Num.Num) (ConT GHC.Types.Int)
+
+Body of definitions:
+
+> mkNumDecs :: Name -> Name -> Name -> Q [DecQ]
+> mkNumDecs lifter unary binary =
+>   let lifter' = varE lifter
+>       unary'  = varE unary
+>       binary' = varE binary
+>   in fmap (fmap return)
+>      [d| (+) = $binary' "+"
+>          (*) = $binary' "*"
+>          (-) = $binary' "-"
+>          abs = $unary' "abs"
+>          negate = $unary' "negate"
+>          signum = $unary' "signum"
+>          fromIntegral x = $lifter' x |]
+
+Using declaration expression quotation prefixed with `d` to get `Q
+[Dec]` result type.
+
+Since declaration blocks has type:
+
+    | *THDeriveExample> :t [d| |]
+    | [d||] :: Q [Dec]
+
+Pushing `return` function to inner elements of list inside `Q` monad.
+
+Helper adhoc orphan instance.
+
+> instance IsString Name where
+>   fromString = mkName
+
+Pretty printing the result of `deriveNum`. We use S newtype and related
+functions shown in the beginning.
+
+> newtype S = S {unS :: String}
+>
+> i2s :: Integer -> S
+> i2s = S . show . fromIntegral
+>
+> unaryS :: String -> S -> S
+> unaryS op a = S $ concat ["(", op, unS a, ")"]
+>
+> binaryS :: String -> S -> S -> S
+> binaryS op a b = S $ concat ["(", unS a, " ", op, " ", unS b, ")"]
+
+Pretty printing this in ghci will print:
+
+    | *THDeriveExample> :set -XTemplateHaskell
+    | *THDeriveExample> ppQ $ deriveNum ''S 'i2s 'unaryS 'binaryS
+    | instance GHC.Num.Num THDeriveExample.S
+    |     where (+) = THDeriveExample.binaryS "+"
+    |           (*) = THDeriveExample.binaryS "*"
+    |           (-) = THDeriveExample.binaryS "-"
+    |           abs = THDeriveExample.unaryS "abs"
+    |           negate = THDeriveExample.unaryS "negate"
+    |           signum = THDeriveExample.unaryS "signum"
+    |           fromIntegral x_0 = THDeriveExample.i2s x_0
+
+It is verbose, and using extra index for variable name, though this is
+what we've intended to generate.
