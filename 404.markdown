@@ -1,10 +1,12 @@
---
+---
 title: 404 - Not found
---
+---
 
-<div style="padding: 100px 0 150px 0; text-align: center">
-  <p style="padding: 0 0 50px 0;">
-    <span style="font-size: 200px;"> ('λ') </span>
-  </p>
-  <span style="font-size: 80px;"> 404 - Not found </span>
+<div id="not_found">
+  <div id="not_found_upper">
+      <a href="/index.html">('λ')</a>
+  </div>
+  <div id="not_found_lower">
+      404 - Not found
+  </div>
 </div>

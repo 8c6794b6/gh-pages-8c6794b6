@@ -2,25 +2,31 @@
 title: Home
 ---
 
-# About
-
-*Wram fuzzy thing*, is another term for
-[*'Monad'*](http://www.urbandictionary.com/define.php?term=Warm%20Fuzzy%20Thing),
-or a gh-page created by 8c6794b6, which means this site.
-
 # Recent posts
 
 <ul>
     $recentPosts$
+   <li> [More ...](/archive.html) </li>
 </ul>
 
-# Finding me elsewhere
+# Tags
 
-* [GitHub](http://github.com/8c6794b6)
-* [SoundCloud](http://soundcloud.com/warm-fuzzy-thing)
-* [twitter](http://twitter.com/8c6794b6)
-* [haskellers](http://haskellers.com/user/1221)
+<div>
+    $tagcloud$
+</div>
+
+# About
+
+*Wram fuzzy thing* is
+
+1. Kind of like a
+['*burrito*'](http://www.urbandictionary.com/define.php?term=Warm%20Fuzzy%20Thing)
+2. A place to hold contents created by 8c6794b6, which means this site.
 
 # Contact
 
-Email: account `'8c6794b6'` on gmail.
+Via
+[GitHub](http://github.com/8c6794b6),
+[SoundCloud](http://soundcloud.com/warm-fuzzy-thing),
+[twitter](http://twitter.com/8c6794b6),
+or email `'8c6794b6'` account on gmail.
