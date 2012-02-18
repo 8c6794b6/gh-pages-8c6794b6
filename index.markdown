@@ -14,7 +14,7 @@ kind of like a
 or kind of like a blog by 8c6794b6.
 -->
 
-Github page by 8c6794b6, kind of like a blog.
+Github page of 8c6794b6, kind of like a blog.
 
 </div>
 
