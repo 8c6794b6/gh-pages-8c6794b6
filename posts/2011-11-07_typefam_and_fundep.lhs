@@ -2,7 +2,7 @@
 title: A situation when type families does not work, but functional dependencies does
 author: 8c6794b6
 date: November 7, 2011
-tags: haskell, typefamilies, functionaldependencies
+tags: haskell, typefamily, functionaldependency
 description: A comparison for TF and FD.
 ---
 

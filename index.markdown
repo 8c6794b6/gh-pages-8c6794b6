@@ -2,31 +2,51 @@
 title: Home
 ---
 
-# Recent posts
+<div id="home_left">
 
-<ul>
-    $recentPosts$
-   <li> [More ...](/archive.html) </li>
-</ul>
-
-# Tags
-
-<div>
-    $tagcloud$
-</div>
-
+<div id="home_about">
 # About
 
-*Wram fuzzy thing* is
+<!--
+*"Wram fuzzy thing"* is
+kind of like a
+["*burrito*"](http://www.urbandictionary.com/define.php?term=Warm%20Fuzzy%20Thing),<br />
+or kind of like a blog by 8c6794b6.
+-->
 
-1. Kind of like a
-['*burrito*'](http://www.urbandictionary.com/define.php?term=Warm%20Fuzzy%20Thing)
-2. A place to hold contents created by 8c6794b6, which means this site.
+Github page by 8c6794b6, kind of like a blog.
 
+</div>
+
+
+<div id="home_contact">
 # Contact
-
-Via
+Email: *'8c6794b6'* account on gmail.<br />
+Elsewhere:
 [GitHub](http://github.com/8c6794b6),
 [SoundCloud](http://soundcloud.com/warm-fuzzy-thing),
-[twitter](http://twitter.com/8c6794b6),
-or email `'8c6794b6'` account on gmail.
+[twitter](http://twitter.com/8c6794b6)
+</div>
+
+</div>
+
+<div id="home_right">
+
+<div id="recent_posts">
+# Recent posts
+<ul id="post_list">
+  $recentPosts$
+  <li> [More ...](/archive.html) </li>
+</ul>
+</div>
+
+<div id="tag_cloud">
+# Tags
+$tagcloud$
+</div>
+
+
+
+
+</div>
+<div class="clear"></div>

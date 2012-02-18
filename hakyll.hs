@@ -13,7 +13,7 @@ module Main where
 
 import Control.Arrow ((>>>), arr)
 import Data.Monoid
-import Text.Pandoc (ParserState, WriterOptions)
+import Text.Pandoc (ParserState, WriterOptions(..))
 import Hakyll
 
 main :: IO ()
@@ -38,7 +38,8 @@ myConf :: MyConfiguration
 myConf = MyConfiguration
     { numberOfRecentPosts = 3
     , parserState         = defaultHakyllParserState
-    , writerOptions       = defaultHakyllWriterOptions
+    , writerOptions       = defaultHakyllWriterOptions 
+      { writerHtml5 = True }
     , atomFeed            = Just myFeedConf
     }
 
@@ -90,8 +91,8 @@ ghPageWith conf = do
     case atomFeed conf of
         Nothing -> return ()
         Just f  -> do
-            match  "atom.xml" $ route idRoute
-            create "atom.xml" $ requireAll_ "posts/*" >>> renderAtom f
+            match  "rss.xml" $ route idRoute
+            create "rss.xml" $ requireAll_ "posts/*" >>> renderRss f
             return ()
 
   where

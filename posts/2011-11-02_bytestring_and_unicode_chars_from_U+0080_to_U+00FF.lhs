@@ -2,7 +2,7 @@
 title: Bytestring and unicode chars from U+0080 to U+00FF
 author: 8c6794b6
 date: November 2, 2011
-tags: haskell, utf-8
+tags: haskell, utf-8, web
 description: Using bytestring data between U+0080 and U+00FF
 ---
 

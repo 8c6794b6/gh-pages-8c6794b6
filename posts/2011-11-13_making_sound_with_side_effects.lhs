@@ -2,7 +2,7 @@
 title: Making sound with side effects
 author: 8c6794b6
 date: November 13, 2011
-tags: haskell, sc3, sound
+tags: haskell, supercollider, sound
 description: Making sound with side effects of fibonacci sequence
 ---
 This post is a scratchy idea for making sound with side
