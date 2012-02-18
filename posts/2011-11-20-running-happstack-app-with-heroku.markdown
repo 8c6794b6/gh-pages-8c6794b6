@@ -1,0 +1,70 @@
+---
+title: Running happstack app with heroku
+author: 8c6794b6
+date: November 20, 2011
+tags: haskell, heroku, web
+description: A demo of simple full text search running with heroku
+---
+
+The demo app is [running here](http://ixfts.herokuapp.com/).
+
+I had [a small web app](https://github.com/8c6794b6/ixfts) witten in
+haskell. After reading a post about [running yesod webapp on
+heroku](http://www.yesodweb.com/blog/2011/07/haskell-on-heroku) and
+having a look at [heroku haskell demo
+codes](https://github.com/mwotton/heroku_haskell_demo), trying
+[heroku](http://www.heroku.com) to host this app seemed interesting.
+
+The web app I had was using [happstack](http://happstack.com/index.html)
+instead of yesod. As the demo app shows, [heroku
+cedar](http://devcenter.heroku.com/articles/cedar) can run happstack
+app. Moreover, it can run whatever executable that is runnable under
+heroku's cedar stack. Rest of this post shows couple notes about setting
+up this demo app.
+
+After following the guide: [getting started with
+heroku](http://devcenter.heroku.com/articles/quickstart), and creating a
+[cedar stack](http://devcenter.heroku.com/articles/cedar), we are ready
+to deploy the app.
+
+The demo app is using following files:
+
+-   Web app executable file
+-   A [Procfile](http://devcenter.heroku.com/articles/procfile) to
+    configure heroku cedar
+-   Other files required by web app (html, css, images, etc)
+
+So compile the app, write configuration, add to git repository and push
+them to heroku.
+
+The executable file need to be runnable in heroku's hosted environment.
+The OS used by cedar was Ubuntu Server 10.04 (Lucid Lynx), mentioned
+[here](http://devcenter.heroku.com/articles/cedar#stack_software_versions).
+Compiled on linux x86\_64 architecture. Luckily, it was not difficult
+for me to compile on linux x86\_64. Haven't tried, but it may work with
+compiling under emulator. One more note for compiling: compile the app
+statically, or, make it runnable under Ubuntu 10.04 somehow. The actual
+option need to compile statically may vary on ghc version, linker, etc.
+In my case, with ghc 7.0.3, GNU ld (GNU Binutils) 2.21.1.20110627, linux
+3.1.0-4-ARCH for x86\_64, below option worked:
+
+    $ ghc --make -static -optl-pthread -optl-static main.hs
+
+Using `Procfile` to specify what command to execute for which process
+type.
+
+    $ cat Procfile
+    web: ./main serve -d state -s static -p  +RTS -N
+
+Pass whatever option used by the web app. For instance, specifying port
+from environment variable ``.
+
+When uploading the app, need cedar to recognize the app somehow,
+otherwise, heroku will reject the git commit push. We can use dummy
+`Gemfile` to tell cedar that it's a ruby app, or `requirements.txt` to
+tell as a python app, or whatever.
+
+After deploying the app, I found that Heroku's Cedar stack and
+configuration done by Procfile was extremely flexible, way far flexible
+than I imagined.
+
