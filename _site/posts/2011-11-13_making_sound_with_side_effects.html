@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Warm Fuzzy Thing - Making sound with side effects</title>
+    <link rel="shortcut icon" href="../favicon.ico" type="image/x-icon">
+    <link rel="icon" href="favicon.ico" type="image/ico">
+    <link rel="stylesheet" type="text/css" href="../css/style.css">
+    <link rel="stylesheet" type="text/css" href="../css/hk-tango.css">
+    <link rel="alternate" type="application/rss+xml" title="Warm Fuzzy Thing" href="../rss.xml">
+  </head>
+  <body>
+    <div>
+      <div id="site_name">
+        <div id="site_name_contents">
+          <a href="../index.html">Warm Fuzzy Thing</a>
+        </div>
+      </div>
+
+      <div id="header">
+        <div id="header_contents">
+          <div id="navigation">
+            <a href="../index.html">Home</a>
+            <a href="../archive.html">Archive</a>
+            <a href="../rss.xml">RSS</a>
+          </div>
+        </div>
+      </div>
+
+      <div id="content">
+
+        <h1>Making sound with side effects</h1>
+<div id="post_date">
+  <strong>November 13, 2011</strong>
+</div>
+
+<div id="post_body">
+<p>This post is a scratchy idea for making sound with side effects. Sample recording created with side effects from fibonacci sequence sounds like this:</p>
+<!--
+<p><img class="posterous_plugin_object posterous_plugin_object_audio"
+src="/images/spacer.gif?content_part=ssttFvpystbbpkAsneda" alt=""
+width="100" height="100" /></p>
+-->
+
+<audio controls="controls" <source src="../audio/fib.mp3" type="audio/mp3"></audio> <source src="../audio/fib.ogg" type="audio/ogg"></source> </audio>
+<p>During debug, we print out intermediate data, as side effects. Like this, can we make sounds from those intermediate data, as side effects?</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><br />&gt; <span class="kw">module</span> <span class="dt">SideEffectSound</span> <span class="kw">where</span></code></pre>
+<p>We will use <code>scsynth</code> as sound synthesis engine.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">import</span> <span class="dt">Control.Concurrent</span><br />&gt; <span class="kw">import</span> <span class="dt">Control.Monad</span><br />&gt; <span class="kw">import</span> <span class="dt">Control.Monad.Reader</span><br />&gt; <span class="kw">import</span> <span class="dt">Control.Monad.State</span><br />&gt; <span class="kw">import</span> <span class="dt">Control.Monad.Writer</span><br />&gt; <span class="kw">import</span> <span class="dt">Data.Word</span><br />&gt; <span class="kw">import</span> <span class="dt">Sound.OpenSoundControl</span><br />&gt; <span class="kw">import</span> <span class="dt">Sound.SC3</span><br />&gt; <span class="kw">import</span> <span class="dt">Sound.SC3.ID</span></code></pre>
+<p>As an action to get side effect, using fibonacci sequence here. We will not use memoizatoin nor any other method to achive efficiency, since our concern resides in those side effects.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">fib_visible </span><span class="ot">::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Int</span><br />&gt; fib_visible n<br />&gt;   <span class="fu">|</span> n <span class="fu">==</span> <span class="dv">0</span>    <span class="fu">=</span> <span class="fu">putStr</span> <span class="st">&quot;0&quot;</span> <span class="fu">&gt;&gt;</span> <span class="fu">return</span> <span class="dv">1</span><br />&gt;   <span class="fu">|</span> n <span class="fu">==</span> <span class="dv">1</span>    <span class="fu">=</span> <span class="fu">putStr</span> <span class="st">&quot;1&quot;</span> <span class="fu">&gt;&gt;</span> <span class="fu">return</span> <span class="dv">1</span><br />&gt;   <span class="fu">|</span> <span class="fu">otherwise</span> <span class="fu">=</span> <span class="kw">do</span><br />&gt;       <span class="fu">putStr</span> (<span class="fu">show</span> n)<br />&gt;       a <span class="ot">&lt;-</span> fib_visible (n<span class="fu">-</span><span class="dv">1</span>)<br />&gt;       b <span class="ot">&lt;-</span> fib_visible (n<span class="fu">-</span><span class="dv">2</span>)<br />&gt;       <span class="fu">return</span> <span class="fu">$</span> a <span class="fu">+</span> b</code></pre>
+<p>Sample output:</p>
+<pre><code>| ghci&gt; fib_visible 5
+| 5432101210321018
+</code></pre>
+<p>Like above, we will make sound from side effect with fibonacci sequence. Using a newtype wrapper for sending OSC message to default scsynth, running in UDP port 57110 of localhost (assuming that scsynth is running with this default settings).</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">newtype</span> <span class="dt">Sound</span> a <span class="fu">=</span> <span class="dt">Sound</span> {<span class="ot">unSound </span><span class="ot">::</span> <span class="dt">ReaderT</span> <span class="dt">UDP</span> <span class="dt">IO</span> a}<br />&gt;   <span class="kw">deriving</span> (<span class="kw">Functor</span>, <span class="kw">Monad</span>, <span class="dt">MonadReader</span> <span class="dt">UDP</span>, <span class="dt">MonadIO</span>)<br />&gt; <br />&gt; <span class="ot">runSound </span><span class="ot">::</span> <span class="dt">Sound</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> a<br />&gt; runSound <span class="fu">=</span> withSC3 <span class="fu">.</span> runReaderT <span class="fu">.</span> unSound</code></pre>
+<p>With using <code>Sound</code> wrapper, we can write audible fibonacci sequence with side effect pretty much resembling to its visible variant. The only difference we see in the body of code is use of <code>mkSound</code> instead of <code>putStr</code>.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">fib_audible </span><span class="ot">::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Sound</span> <span class="dt">Int</span><br />&gt; fib_audible n<br />&gt;   <span class="fu">|</span> n <span class="fu">==</span> <span class="dv">0</span>    <span class="fu">=</span> mkSound <span class="dv">0</span> <span class="fu">&gt;&gt;</span> <span class="fu">return</span> <span class="dv">1</span><br />&gt;   <span class="fu">|</span> n <span class="fu">==</span> <span class="dv">1</span>    <span class="fu">=</span> mkSound <span class="dv">1</span> <span class="fu">&gt;&gt;</span> <span class="fu">return</span> <span class="dv">1</span><br />&gt;   <span class="fu">|</span> <span class="fu">otherwise</span> <span class="fu">=</span> <span class="kw">do</span><br />&gt;       mkSound n<br />&gt;       a <span class="ot">&lt;-</span> fib_audible (n<span class="fu">-</span><span class="dv">1</span>)<br />&gt;       b <span class="ot">&lt;-</span> fib_audible (n<span class="fu">-</span><span class="dv">2</span>)<br />&gt;       <span class="fu">return</span> <span class="fu">$</span> a <span class="fu">+</span> b</code></pre>
+<p>We could write <code>fib_audible</code> and <code>fib_visible</code> with using <code>mkFib</code>.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">mkFib </span><span class="ot">::</span> <span class="kw">Monad</span> m <span class="ot">=&gt;</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> m ()) <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> m <span class="dt">Int</span><br />&gt; mkFib act n<br />&gt;   <span class="fu">|</span> n <span class="fu">==</span> <span class="dv">0</span>    <span class="fu">=</span> act <span class="dv">0</span> <span class="fu">&gt;&gt;</span> <span class="fu">return</span> <span class="dv">1</span><br />&gt;   <span class="fu">|</span> n <span class="fu">==</span> <span class="dv">1</span>    <span class="fu">=</span> act <span class="dv">1</span> <span class="fu">&gt;&gt;</span> <span class="fu">return</span> <span class="dv">1</span><br />&gt;   <span class="fu">|</span> <span class="fu">otherwise</span> <span class="fu">=</span> <span class="kw">do</span><br />&gt;       act n<br />&gt;       a <span class="ot">&lt;-</span> mkFib act (n<span class="fu">-</span><span class="dv">1</span>)<br />&gt;       b <span class="ot">&lt;-</span> mkFib act (n<span class="fu">-</span><span class="dv">2</span>)<br />&gt;       <span class="fu">return</span> <span class="fu">$</span> a <span class="fu">+</span> b<br />&gt; <br />&gt; fib_visible' <span class="fu">=</span> mkFib (<span class="fu">putStr</span> <span class="fu">.</span> <span class="fu">show</span>)<br />&gt; fib_audible' <span class="fu">=</span> mkFib mkSound</code></pre>
+<p>The sound maker. Sends OSC message to scsynth and pause. Will not make sound when n is 0.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">mkSound </span><span class="ot">::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Sound</span> ()<br />&gt; mkSound n<br />&gt;   <span class="fu">|</span> n <span class="fu">==</span> <span class="dv">0</span>    <span class="fu">=</span> liftIO <span class="fu">$</span> threadDelay timeUnit<br />&gt;   <span class="fu">|</span> <span class="fu">otherwise</span> <span class="fu">=</span> <span class="kw">do</span><br />&gt;     fd <span class="ot">&lt;-</span> ask<br />&gt;     <span class="kw">let</span> n' <span class="fu">=</span> <span class="fu">fromIntegral</span> n<br />&gt;     liftIO <span class="fu">$</span> <span class="kw">do</span><br />&gt;       send fd <span class="fu">$</span> s_new <span class="st">&quot;fibdef&quot;</span> (<span class="fu">-</span><span class="dv">1</span>) <span class="dt">AddToHead</span> <span class="dv">1</span><br />&gt;         [ (<span class="st">&quot;freq&quot;</span>, n' <span class="fu">*</span> <span class="dv">220</span>)<br />&gt;         , (<span class="st">&quot;amp&quot;</span>, <span class="dv">0</span><span class="fu">.</span><span class="dv">05</span> <span class="fu">+</span> (<span class="dv">0</span><span class="fu">.</span><span class="dv">01</span> <span class="fu">*</span> n'))<br />&gt;         , (<span class="st">&quot;pan&quot;</span>, (<span class="fu">-</span><span class="dv">1</span>) <span class="fu">+</span> (<span class="dv">2</span><span class="fu">/</span><span class="dv">3</span>) <span class="fu">*</span> <span class="fu">fromIntegral</span> (n <span class="ot">`mod`</span> <span class="dv">4</span>))<br />&gt;         , (<span class="st">&quot;decay&quot;</span>, <span class="dv">0</span><span class="fu">.</span><span class="dv">1</span> <span class="fu">+</span> (n' <span class="fu">*</span> <span class="dv">0</span><span class="fu">.</span><span class="dv">175</span>)) ]<br />&gt;       threadDelay timeUnit</code></pre>
+<p>Time interval used for pausing.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">timeUnit </span><span class="ot">::</span> <span class="dt">Int</span><br />&gt; timeUnit <span class="fu">=</span> <span class="dv">12800</span></code></pre>
+<p>Synthdefs used in this piece. Simple synthdef taking <code>freq</code>, <code>pan</code> and <code>amp</code> parameter.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">fibdef </span><span class="ot">::</span> <span class="dt">UGen</span><br />&gt; fibdef <span class="fu">=</span><br />&gt;   <span class="kw">let</span> sig <span class="fu">=</span> sinOsc <span class="dt">AR</span> frq <span class="dv">0</span> <span class="fu">*</span> e <span class="fu">*</span> amp<br />&gt;       frq <span class="fu">=</span> control <span class="dt">KR</span> <span class="st">&quot;freq&quot;</span> <span class="dv">440</span><br />&gt;       amp <span class="fu">=</span> control <span class="dt">KR</span> <span class="st">&quot;amp&quot;</span> <span class="dv">0</span><span class="fu">.</span><span class="dv">1</span><br />&gt;       e   <span class="fu">=</span> envGen <span class="dt">KR</span> <span class="dv">1</span> <span class="dv">1</span> <span class="dv">0</span> <span class="dv">1</span> <span class="dt">RemoveSynth</span> shp<br />&gt;       shp <span class="fu">=</span> envPerc 1e<span class="fu">-</span><span class="dv">4</span> dcy<br />&gt;       pan <span class="fu">=</span> control <span class="dt">KR</span> <span class="st">&quot;pan&quot;</span> <span class="dv">0</span><br />&gt;       dcy <span class="fu">=</span> control <span class="dt">KR</span> <span class="st">&quot;decay&quot;</span> <span class="dv">0</span><span class="fu">.</span><span class="dv">5</span><br />&gt;   <span class="kw">in</span>  out <span class="dv">0</span> (pan2 sig pan <span class="dv">1</span>)</code></pre>
+<p>Send the synthdef to scsynth.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">setup_fib </span><span class="ot">::</span> <span class="dt">Transport</span> t <span class="ot">=&gt;</span> t <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">OSC</span><br />&gt; setup_fib fd <span class="fu">=</span> <span class="kw">do</span><br />&gt;   async fd <span class="fu">$</span> bundle immediately<br />&gt;     [ d_recv <span class="fu">$</span> synthdef <span class="st">&quot;fibdef&quot;</span> fibdef ]</code></pre>
+<p>Now its ready to hear the sound.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">play_fib_sound </span><span class="ot">::</span> <span class="dt">IO</span> <span class="dt">Int</span><br />&gt; play_fib_sound <span class="fu">=</span> <span class="kw">do</span><br />&gt;   withSC3 <span class="fu">$</span> \fd <span class="ot">-&gt;</span> reset fd <span class="fu">&gt;&gt;</span> setup_fib fd<br />&gt;   runSound <span class="fu">$</span> fib_audible <span class="dv">17</span></code></pre>
+<p>In some case, Instead of listening sound in real time, we might want to write score and render the result in batch command. Below newtype <code>Score</code> will do this job. <code>Score</code> is a combination of Reader, Writer, and State monad, it takes delta time as Reader monad’s environment value, used to increment current time in score file. Writer accumulate the OSC list written to score file, and State monad hold the current time in the score. Alternatively, it could be written with RWS monad, or single State monad. The use of newtype wrapper with <code>GeneralizedNewtypeDeriving</code> here is, I suppose, just a matter of taste.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">newtype</span> <span class="dt">Score</span> a <span class="fu">=</span><br />&gt;   <span class="dt">Score</span> {<span class="ot">unScore </span><span class="ot">::</span> <span class="dt">ReaderT</span> <span class="dt">Word64</span> (<span class="dt">WriterT</span> [<span class="dt">OSC</span>] (<span class="dt">State</span> <span class="dt">Word64</span>)) a} <span class="kw">deriving</span><br />&gt;   (<span class="kw">Functor</span>, <span class="kw">Monad</span>, <span class="dt">MonadState</span> <span class="dt">Word64</span>, <span class="dt">MonadWriter</span> [<span class="dt">OSC</span>], <span class="dt">MonadReader</span> <span class="dt">Word64</span>)<br />&gt; <br />&gt; <span class="ot">runScore </span><span class="ot">::</span> <span class="dt">Score</span> a <span class="ot">-&gt;</span> <span class="dt">Word64</span> <span class="ot">-&gt;</span> [<span class="dt">OSC</span>]<br />&gt; runScore m delta <span class="fu">=</span><br />&gt;   evalState (execWriterT (runReaderT (unScore m) delta)) <span class="dv">0</span></code></pre>
+<p>Action to make score from each data passed in fibonacci, and fibonacci score writer monad. We can use <code>mkFib</code> to make a new action to write score from side effects generated from fibonacci action.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">mkScore </span><span class="ot">::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Score</span> ()<br />&gt; mkScore n <span class="fu">=</span> <span class="kw">do</span><br />&gt;   delta <span class="ot">&lt;-</span> ask<br />&gt;   t0 <span class="ot">&lt;-</span> get<br />&gt;   <span class="kw">let</span> n' <span class="fu">=</span> <span class="fu">fromIntegral</span> n<br />&gt;   tell <span class="fu">$</span> [ bundle (<span class="dt">NTPi</span> t0)<br />&gt;     [ s_new <span class="st">&quot;fibdef&quot;</span> (<span class="fu">-</span><span class="dv">1</span>) <span class="dt">AddToTail</span> <span class="dv">1</span><br />&gt;       [ (<span class="st">&quot;freq&quot;</span>, n' <span class="fu">*</span> <span class="dv">220</span>)<br />&gt;       , (<span class="st">&quot;amp&quot;</span>,  <span class="dv">0</span><span class="fu">.</span><span class="dv">05</span> <span class="fu">+</span> (n' <span class="fu">*</span> <span class="dv">0</span><span class="fu">.</span><span class="dv">02</span>))<br />&gt;       , (<span class="st">&quot;pan&quot;</span>, (<span class="fu">-</span><span class="dv">1</span>) <span class="fu">+</span> (<span class="dv">2</span><span class="fu">/</span><span class="dv">3</span>) <span class="fu">*</span> <span class="fu">fromIntegral</span> (n <span class="ot">`mod`</span> <span class="dv">4</span>))<br />&gt;       , (<span class="st">&quot;decay&quot;</span>, <span class="dv">0</span><span class="fu">.</span><span class="dv">1</span> <span class="fu">+</span> (n' <span class="fu">*</span> <span class="dv">0</span><span class="fu">.</span><span class="dv">25</span>)) ]]]<br />&gt;   put (t0 <span class="fu">+</span> delta)<br />&gt; <br />&gt; <span class="ot">fib_score </span><span class="ot">::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Score</span> <span class="dt">Int</span><br />&gt; fib_score <span class="fu">=</span> mkFib mkScore</code></pre>
+<p>Function to write score file, with initial OSC message to send synthdef and add default group to scsynth.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">write_fib_score </span><span class="ot">::</span> <span class="fu">FilePath</span> <span class="ot">-&gt;</span> <span class="dt">Score</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> ()<br />&gt; write_fib_score path m <span class="fu">=</span> <span class="kw">do</span><br />&gt;   <span class="kw">let</span> iosc <span class="fu">=</span> bundle (<span class="dt">NTPi</span> <span class="dv">0</span>)<br />&gt;         [ g_new [(<span class="dv">1</span>,<span class="dt">AddToTail</span>,<span class="dv">0</span>)]<br />&gt;         , d_recv <span class="fu">$</span> synthdef <span class="st">&quot;fibdef&quot;</span> fibdef ]<br />&gt;   writeNRT path (iosc <span class="fu">:</span> runScore m (<span class="fu">fromIntegral</span> timeUnit <span class="fu">*</span> <span class="dv">10000</span>))</code></pre>
+<p>Test it.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">test_fib_score </span><span class="ot">::</span> <span class="dt">IO</span> ()<br />&gt; test_fib_score <span class="fu">=</span> write_fib_score <span class="st">&quot;/tmp/fib.osc&quot;</span> (fib_score <span class="dv">12</span>)</code></pre>
+<p>Attached recording in the beginning of this post was created from <code>fib.osc</code>, fed to scsynth in non-realtime mode.</p>
+<pre><code>| $ scsynth -o 2 -N /tmp/fib.osc _ out.wav 48000 WAVE float
+</code></pre>
+</div>
+
+<div class="post_tags">
+  <strong>Tags: </strong><a href="../tags/haskell.html">haskell</a>, <a href="../tags/supercollider.html">supercollider</a>, <a href="../tags/sound.html">sound</a>
+</div>
+
+
+      </div>
+      <div id="footer">
+        <div id="footer_content">
+          <p>
+            <a href="../index.html">Home</a> |
+            <a href="../archive.html">Archive</a> |
+            <a href="../rss.xml">RSS</a>
+          </p>
+
+          Site contents licensed under
+          <a href="http://creativecommons.org/licenses/by/3.0/">
+            CC Attribution 3.0
+          </a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

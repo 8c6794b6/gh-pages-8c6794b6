@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Warm Fuzzy Thing - Running happstack app with heroku</title>
+    <link rel="shortcut icon" href="../favicon.ico" type="image/x-icon">
+    <link rel="icon" href="favicon.ico" type="image/ico">
+    <link rel="stylesheet" type="text/css" href="../css/style.css">
+    <link rel="stylesheet" type="text/css" href="../css/hk-tango.css">
+    <link rel="alternate" type="application/rss+xml" title="Warm Fuzzy Thing" href="../rss.xml">
+  </head>
+  <body>
+    <div>
+      <div id="site_name">
+        <div id="site_name_contents">
+          <a href="../index.html">Warm Fuzzy Thing</a>
+        </div>
+      </div>
+
+      <div id="header">
+        <div id="header_contents">
+          <div id="navigation">
+            <a href="../index.html">Home</a>
+            <a href="../archive.html">Archive</a>
+            <a href="../rss.xml">RSS</a>
+          </div>
+        </div>
+      </div>
+
+      <div id="content">
+
+        <h1>Running happstack app with heroku</h1>
+<div id="post_date">
+  <strong>November 20, 2011</strong>
+</div>
+
+<div id="post_body">
+<p>The demo app is <a href="http://ixfts.herokuapp.com/">running here</a>.</p>
+<p>I had <a href="https://github.com/8c6794b6/ixfts">a small web app</a> witten in haskell. After reading a post about <a href="http://www.yesodweb.com/blog/2011/07/haskell-on-heroku">running yesod webapp on heroku</a> and having a look at <a href="https://github.com/mwotton/heroku_haskell_demo">heroku haskell demo codes</a>, trying <a href="http://www.heroku.com">heroku</a> to host this app seemed interesting.</p>
+<p>The web app I had was using <a href="http://happstack.com/index.html">happstack</a> instead of yesod. As the demo app shows, <a href="http://devcenter.heroku.com/articles/cedar">heroku cedar</a> can run happstack app. Moreover, it can run whatever executable that is runnable under heroku’s cedar stack. Rest of this post shows couple notes about setting up this demo app.</p>
+<p>After following the guide: <a href="http://devcenter.heroku.com/articles/quickstart">getting started with heroku</a>, and creating a <a href="http://devcenter.heroku.com/articles/cedar">cedar stack</a>, we are ready to deploy the app.</p>
+<p>The demo app is using following files:</p>
+<ul>
+<li>Web app executable file</li>
+<li>A <a href="http://devcenter.heroku.com/articles/procfile">Procfile</a> to configure heroku cedar</li>
+<li>Other files required by web app (html, css, images, etc)</li>
+</ul>
+<p>So compile the app, write configuration, add to git repository and push them to heroku.</p>
+<p>The executable file need to be runnable in heroku’s hosted environment. The OS used by cedar was Ubuntu Server 10.04 (Lucid Lynx), mentioned <a href="http://devcenter.heroku.com/articles/cedar#stack_software_versions">here</a>. Compiled on linux x86_64 architecture. Luckily, it was not difficult for me to compile on linux x86_64. Haven’t tried, but it may work with compiling under emulator. One more note for compiling: compile the app statically, or, make it runnable under Ubuntu 10.04 somehow. The actual option need to compile statically may vary on ghc version, linker, etc. In my case, with ghc 7.0.3, GNU ld (GNU Binutils) 2.21.1.20110627, linux 3.1.0–4-ARCH for x86_64, below option worked:</p>
+<pre><code>$ ghc --make -static -optl-pthread -optl-static main.hs
+</code></pre>
+<p>Using <code>Procfile</code> to specify what command to execute for which process type.</p>
+<pre><code>$ cat Procfile
+web: ./main serve -d state -s static -p  +RTS -N
+</code></pre>
+<p>Pass whatever option used by the web app. For instance, specifying port from environment variable ``.</p>
+<p>When uploading the app, need cedar to recognize the app somehow, otherwise, heroku will reject the git commit push. We can use dummy <code>Gemfile</code> to tell cedar that it’s a ruby app, or <code>requirements.txt</code> to tell as a python app, or whatever.</p>
+<p>After deploying the app, I found that Heroku’s Cedar stack and configuration done by Procfile was extremely flexible, way far flexible than I imagined.</p>
+</div>
+
+<div class="post_tags">
+  <strong>Tags: </strong><a href="../tags/haskell.html">haskell</a>, <a href="../tags/heroku.html">heroku</a>, <a href="../tags/web.html">web</a>
+</div>
+
+
+      </div>
+      <div id="footer">
+        <div id="footer_content">
+          <p>
+            <a href="../index.html">Home</a> |
+            <a href="../archive.html">Archive</a> |
+            <a href="../rss.xml">RSS</a>
+          </p>
+
+          Site contents licensed under
+          <a href="http://creativecommons.org/licenses/by/3.0/">
+            CC Attribution 3.0
+          </a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

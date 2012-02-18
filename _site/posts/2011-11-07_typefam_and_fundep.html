@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Warm Fuzzy Thing - A situation when type families does not work, but functional dependencies does</title>
+    <link rel="shortcut icon" href="../favicon.ico" type="image/x-icon">
+    <link rel="icon" href="favicon.ico" type="image/ico">
+    <link rel="stylesheet" type="text/css" href="../css/style.css">
+    <link rel="stylesheet" type="text/css" href="../css/hk-tango.css">
+    <link rel="alternate" type="application/rss+xml" title="Warm Fuzzy Thing" href="../rss.xml">
+  </head>
+  <body>
+    <div>
+      <div id="site_name">
+        <div id="site_name_contents">
+          <a href="../index.html">Warm Fuzzy Thing</a>
+        </div>
+      </div>
+
+      <div id="header">
+        <div id="header_contents">
+          <div id="navigation">
+            <a href="../index.html">Home</a>
+            <a href="../archive.html">Archive</a>
+            <a href="../rss.xml">RSS</a>
+          </div>
+        </div>
+      </div>
+
+      <div id="content">
+
+        <h1>A situation when type families does not work, but functional dependencies does</h1>
+<div id="post_date">
+  <strong>November 7, 2011</strong>
+</div>
+
+<div id="post_body">
+<p>Simon Peyton Jones has posted <a href="http://www.mail-archive.com/haskell-prime@haskell.org/msg03400.html">a summary</a> about relationship between type families and functional dependencies. As well as similarities, there exist difference between functional dependencies and type families.</p>
+<p>I met a code that work with functional dependencies but not with type families. As above mailing list thread points out, the root of difference comes from how overlapping instance are treated.</p>
+<p>The situation I met was combination of overlapping instance with higher rank type, and use of open recursion. Sound bit mixed up. To make myself clear about this, writing it down in detail.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">{-# LANGUAGE TypeFamilies #-}</span><br />&gt; <span class="ot">{-# LANGUAGE FunctionalDependencies, MultiParamTypeClasses #-}</span><br />&gt; <span class="ot">{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}</span><br />&gt; <span class="ot">{-# LANGUAGE RankNTypes, GADTs #-}</span><br />&gt; <br />&gt; <span class="kw">module</span> <span class="dt">ToFDOrTF</span> <span class="kw">where</span></code></pre>
+<p>The code I was working was with heterogeneous collection. All of the codes writen here are heavily inspired from <a href="http://okmij.org/ftp/tagless-final/course/">typed tagless interpreter by Oleg Kiselyov</a>. Indeed, this situation came to me when I was doing the exercise written in one of the code shown in tagless-final courses.</p>
+<p>Preparing data type to hold term</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">data</span> <span class="dt">Term</span> r h <span class="kw">where</span><br />&gt;   <span class="dt">Term</span><span class="ot"> </span><span class="ot">::</span> <span class="dt">Ty</span> t <span class="ot">-&gt;</span> r h t <span class="ot">-&gt;</span> <span class="dt">Term</span> r h<br />&gt; <br />&gt; <span class="kw">instance</span> <span class="kw">Show</span> (<span class="dt">Term</span> r h) <span class="kw">where</span><br />&gt;   <span class="fu">show</span> (<span class="dt">Term</span> typ _) <span class="fu">=</span> <span class="st">&quot;Term &quot;</span> <span class="fu">++</span> <span class="fu">show</span> typ</code></pre>
+<p>And type representations used in our code. This type representation is simplified version written in GADT, more resembles to <a href="http://www.comlab.ox.ac.uk/projects/gip/school/tc.hs">this version</a>.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">data</span> <span class="dt">Ty</span> t <span class="kw">where</span><br />&gt;   <span class="dt">TInt</span><span class="ot">  </span><span class="ot">::</span> <span class="dt">Ty</span> <span class="dt">Int</span><br />&gt;   <span class="dt">TBool</span><span class="ot"> </span><span class="ot">::</span> <span class="dt">Ty</span> <span class="dt">Bool</span><br />&gt;   <span class="dt">TChar</span><span class="ot"> </span><span class="ot">::</span> <span class="dt">Ty</span> <span class="dt">Char</span><br />&gt;   <span class="dt">TList</span><span class="ot"> </span><span class="ot">::</span> <span class="dt">Ty</span> t <span class="ot">-&gt;</span> <span class="dt">Ty</span> [t]<br />&gt;   <span class="dt">TArr</span><span class="ot">  </span><span class="ot">::</span> <span class="dt">Ty</span> a <span class="ot">-&gt;</span> <span class="dt">Ty</span> b <span class="ot">-&gt;</span> <span class="dt">Ty</span> (a<span class="ot">-&gt;</span>b)<br />&gt; <br />&gt; <span class="kw">instance</span> <span class="kw">Show</span> (<span class="dt">Ty</span> t) <span class="kw">where</span><br />&gt;   <span class="fu">show</span> t <span class="fu">=</span> <span class="kw">case</span> t <span class="kw">of</span><br />&gt;     <span class="dt">TInt</span>     <span class="ot">-&gt;</span> <span class="st">&quot;Int&quot;</span><br />&gt;     <span class="dt">TBool</span>    <span class="ot">-&gt;</span> <span class="st">&quot;Bool&quot;</span><br />&gt;     <span class="dt">TChar</span>    <span class="ot">-&gt;</span> <span class="st">&quot;Char&quot;</span><br />&gt;     <span class="dt">TList</span> ty <span class="ot">-&gt;</span> <span class="st">&quot;[&quot;</span> <span class="fu">++</span> <span class="fu">show</span> ty <span class="fu">++</span> <span class="st">&quot;]&quot;</span><br />&gt;     <span class="dt">TArr</span> a b <span class="ot">-&gt;</span> <span class="fu">show</span> a <span class="fu">++</span> <span class="st">&quot; -&gt; &quot;</span> <span class="fu">++</span> <span class="fu">show</span> b</code></pre>
+<p>Suppose that, we want to use below expression in DSL.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">class</span> <span class="dt">Sym</span> e <span class="kw">where</span><br />&gt; <span class="ot">  lam  </span><span class="ot">::</span> <span class="dt">Ty</span> a <span class="ot">-&gt;</span> e (a,h) b <span class="ot">-&gt;</span> e h (a<span class="ot">-&gt;</span>b)<br />&gt; <span class="ot">  app  </span><span class="ot">::</span> e h (a<span class="ot">-&gt;</span>b) <span class="ot">-&gt;</span> e h a <span class="ot">-&gt;</span> e h b<br />&gt; <span class="ot">  z    </span><span class="ot">::</span> e (a,h) a<br />&gt; <span class="ot">  s    </span><span class="ot">::</span> e h a <span class="ot">-&gt;</span> e (<span class="fu">any</span>,h) a<br />&gt; <span class="ot">  int  </span><span class="ot">::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> e h <span class="dt">Int</span><br />&gt; <span class="ot">  add  </span><span class="ot">::</span> e h <span class="dt">Int</span> <span class="ot">-&gt;</span> e h <span class="dt">Int</span> <span class="ot">-&gt;</span> e h <span class="dt">Int</span><br />&gt; <span class="ot">  char </span><span class="ot">::</span> <span class="dt">Char</span> <span class="ot">-&gt;</span> e h <span class="dt">Char</span><br />&gt; <span class="ot">  bool </span><span class="ot">::</span> <span class="dt">Bool</span> <span class="ot">-&gt;</span> e h <span class="dt">Bool</span></code></pre>
+<p>A sample newtype to implement string representation of <code>Sym</code>.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">newtype</span> <span class="dt">S</span> r h <span class="fu">=</span> <span class="dt">S</span> {<span class="ot">unS </span><span class="ot">::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">String</span>}<br />&gt; <br />&gt; <span class="kw">instance</span> <span class="dt">Sym</span> <span class="dt">S</span> <span class="kw">where</span><br />&gt;   lam t e   <span class="fu">=</span> <span class="dt">S</span> (\h <span class="ot">-&gt;</span><br />&gt;     <span class="st">&quot;(\\(x&quot;</span> <span class="fu">++</span> <span class="fu">show</span> h <span class="fu">++</span> <span class="st">&quot;::&quot;</span> <span class="fu">++</span> <span class="fu">show</span> t <span class="fu">++</span> <span class="st">&quot;) -&gt; &quot;</span> <span class="fu">++</span> unS e (h<span class="fu">+</span><span class="dv">1</span>) <span class="fu">++</span> <span class="st">&quot;)&quot;</span>)<br />&gt;   app e1 e2 <span class="fu">=</span> <span class="dt">S</span> (\h <span class="ot">-&gt;</span> <span class="st">&quot;(&quot;</span> <span class="fu">++</span> unS e1 h <span class="fu">++</span> <span class="st">&quot; &quot;</span> <span class="fu">++</span> unS e2 h <span class="fu">++</span> <span class="st">&quot;)&quot;</span>)<br />&gt;   z         <span class="fu">=</span> <span class="dt">S</span> (\h <span class="ot">-&gt;</span> <span class="st">&quot;x&quot;</span> <span class="fu">++</span> <span class="fu">show</span> (h<span class="fu">-</span><span class="dv">1</span>))<br />&gt;   s v       <span class="fu">=</span> <span class="dt">S</span> (\h <span class="ot">-&gt;</span> unS v (h<span class="fu">-</span><span class="dv">1</span>))<br />&gt;   int x     <span class="fu">=</span> <span class="dt">S</span> (\_ <span class="ot">-&gt;</span> <span class="fu">show</span> x)<br />&gt;   add e1 e2 <span class="fu">=</span> <span class="dt">S</span> (\h <span class="ot">-&gt;</span> unS e1 h <span class="fu">++</span> <span class="st">&quot; + &quot;</span> <span class="fu">++</span> unS e2 h)<br />&gt;   char x    <span class="fu">=</span> <span class="dt">S</span> (\_ <span class="ot">-&gt;</span> [x])<br />&gt;   bool x    <span class="fu">=</span> <span class="dt">S</span> (\_ <span class="ot">-&gt;</span> <span class="fu">show</span> x)</code></pre>
+<p>Sample expression:</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">expr1 </span><span class="ot">::</span> <span class="dt">Sym</span> r <span class="ot">=&gt;</span> r h <span class="dt">Int</span><br />&gt; expr1 <span class="fu">=</span><br />&gt;   lam <span class="dt">TInt</span> (lam <span class="dt">TInt</span> (z <span class="ot">`add`</span> s z <span class="ot">`add`</span> int <span class="dv">3</span>)) <span class="ot">`app`</span> (int <span class="dv">1</span>) <span class="ot">`app`</span> (int <span class="dv">2</span>)<br />&gt; <br />&gt; <span class="ot">test_expr1 </span><span class="ot">::</span> <span class="dt">IO</span> ()<br />&gt; test_expr1 <span class="fu">=</span> <span class="fu">putStrLn</span> <span class="fu">$</span> unS expr1 <span class="dv">0</span></code></pre>
+<p>Viewing the result:</p>
+<pre><code>| ghci&gt; test_expr1
+| (((\(x0::Int) -&gt; (\(x1::Int) -&gt; x1 + x0 + 3)) 1) 2)
+</code></pre>
+<p>Now, suppose that we want to lookup a variable used in <code>lam</code>. What we want to do here is to lookup a value from heterogeneous collection.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">data</span> <span class="dt">Var</span> t <span class="fu">=</span> <span class="dt">Var</span> (<span class="dt">Ty</span> t) <span class="kw">deriving</span> <span class="kw">Show</span></code></pre>
+<p>Below is a type class for looking up variable from heterogeneous collection, using functional dependencies.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">class</span> <span class="dt">EnvFD</span> g h <span class="fu">|</span> g <span class="ot">-&gt;</span> h <span class="kw">where</span><br />&gt; <span class="ot">  findvarFD </span><span class="ot">::</span> <span class="dt">Sym</span> r <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> (<span class="dt">Term</span> r h)</code></pre>
+<p>Intention here is to go through the heterogeneous collection with specifying index, with decrementing the index after each lookup. When given index reaches to 0, we finish the traversal.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">instance</span> <span class="dt">EnvFD</span> () () <span class="kw">where</span><br />&gt;   findvarFD _ _ <span class="fu">=</span> <span class="kw">Left</span> <span class="st">&quot;Index out of range&quot;</span><br />&gt; <br />&gt; <span class="kw">instance</span> <span class="dt">EnvFD</span> g h <span class="ot">=&gt;</span> <span class="dt">EnvFD</span> (<span class="dt">Var</span> t, g) (t, h) <span class="kw">where</span><br />&gt;   findvarFD i (<span class="dt">Var</span> typ,g)<br />&gt;     <span class="fu">|</span> i <span class="fu">==</span> <span class="dv">0</span>    <span class="fu">=</span> <span class="fu">return</span> <span class="fu">$</span> <span class="dt">Term</span> typ z<br />&gt;     <span class="fu">|</span> <span class="fu">otherwise</span> <span class="fu">=</span> <span class="kw">do</span><br />&gt;         <span class="dt">Term</span> typ v <span class="ot">&lt;-</span> findvarFD (<span class="fu">pred</span> i) g<br />&gt;         <span class="fu">return</span> <span class="fu">$</span> <span class="dt">Term</span> typ (s v)</code></pre>
+<p>Sample variable environment holding Char, Int, and Bool representations.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">env1 </span><span class="ot">::</span> (<span class="dt">Var</span> <span class="dt">Char</span>, (<span class="dt">Var</span> <span class="dt">Int</span>, (<span class="dt">Var</span> <span class="dt">Bool</span>, ())))<br />&gt; env1 <span class="fu">=</span>  (<span class="dt">Var</span> <span class="dt">TChar</span>, (<span class="dt">Var</span> <span class="dt">TInt</span>, (<span class="dt">Var</span> <span class="dt">TBool</span>, ())))</code></pre>
+<p>Function to find variable, with functional dependencies. The result type is fixed to <code>(Term S h)</code>.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">findvarFDS </span><span class="ot">::</span> <span class="dt">EnvFD</span> g h <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> (<span class="dt">Term</span> <span class="dt">S</span> h)<br />&gt; findvarFDS <span class="fu">=</span> findvarFD<br />&gt; <br />&gt; <span class="ot">test_findvarFDS </span><span class="ot">::</span> <span class="dt">IO</span> ()<br />&gt; test_findvarFDS <span class="fu">=</span> <span class="fu">mapM_</span> (\idx <span class="ot">-&gt;</span> <span class="fu">print</span> <span class="fu">$</span> findvarFDS idx env1) [<span class="dv">0</span><span class="fu">..</span><span class="dv">3</span>]</code></pre>
+<p>Testing above in ghci:</p>
+<pre><code>| ghci&gt; test_findvarFDS
+| Right Term Char
+| Right Term Int
+| Right Term Bool
+| Left &quot;Index out of range&quot;
+</code></pre>
+<p>Working, as expected.</p>
+<p>Lets do this in type families too.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">class</span> <span class="dt">EnvTF</span> g <span class="kw">where</span><br />&gt;   <span class="kw">type</span> <span class="dt">Value</span><span class="ot"> g </span><span class="ot">::</span> <span class="fu">*</span><br />&gt; <span class="ot">  findvarTF </span><span class="ot">::</span> (<span class="dt">Sym</span> r, h <span class="fu">~</span> <span class="dt">Value</span> g) <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> (<span class="dt">Term</span> r h)<br />&gt; <br />&gt; <span class="kw">instance</span> <span class="dt">EnvTF</span> () <span class="kw">where</span><br />&gt;    <span class="kw">type</span> <span class="dt">Value</span> () <span class="fu">=</span> ()<br />&gt;    findvarTF _ _ <span class="fu">=</span> <span class="kw">Left</span> <span class="st">&quot;Index out of range&quot;</span><br />&gt; <br />&gt; <span class="kw">instance</span> (<span class="dt">EnvTF</span> g) <span class="ot">=&gt;</span> <span class="dt">EnvTF</span> (<span class="dt">Var</span> t, g) <span class="kw">where</span><br />&gt;    <span class="kw">type</span> <span class="dt">Value</span> (<span class="dt">Var</span> t, g) <span class="fu">=</span> (t, <span class="dt">Value</span> g)<br />&gt;    findvarTF i (<span class="dt">Var</span> typ, g)<br />&gt;       <span class="fu">|</span> i <span class="fu">==</span> <span class="dv">0</span>    <span class="fu">=</span> <span class="fu">return</span> <span class="fu">$</span> <span class="dt">Term</span> typ z<br />&gt;       <span class="fu">|</span> <span class="fu">otherwise</span> <span class="fu">=</span> <span class="kw">do</span><br />&gt;           <span class="dt">Term</span> typ v <span class="ot">&lt;-</span> findvarTF (<span class="fu">pred</span> i) g<br />&gt;           <span class="fu">return</span> <span class="fu">$</span> <span class="dt">Term</span> typ (s v)</code></pre>
+<p>Testing again:</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">findvarTFS </span><span class="ot">::</span> (<span class="dt">EnvTF</span> g, h <span class="fu">~</span> <span class="dt">Value</span> g) <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> (<span class="dt">Term</span> <span class="dt">S</span> h)<br />&gt; findvarTFS <span class="fu">=</span> findvarTF<br />&gt; <br />&gt; <span class="ot">test_findvarTFS </span><span class="ot">::</span> <span class="dt">IO</span> ()<br />&gt; test_findvarTFS <span class="fu">=</span> <span class="fu">mapM_</span> (\idx <span class="ot">-&gt;</span> <span class="fu">print</span> <span class="fu">$</span> findvarTFS idx env1) [<span class="dv">0</span><span class="fu">..</span><span class="dv">3</span>]</code></pre>
+<p>Viewing it with ghci:</p>
+<pre><code>| ghci&gt; test_findvarTFS
+| Right Term Char
+| Right Term Int
+| Right Term Bool
+| Left &quot;Index out of range&quot;
+</code></pre>
+<p>Working again, as expected.</p>
+<p>As pointed out in the mailing list, recursive definition for type families works, as shown in <code>Value</code> definition of <code>EnvTF</code> instance definition.</p>
+<p>So far, those things working in functional dependencies are also working in type families. From here, introducing higher rank type. Now what we want to do is to deserialize <code>Tree</code> data.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">data</span> <span class="dt">Tree</span> <span class="fu">=</span> <span class="dt">Node</span> <span class="dt">String</span> [<span class="dt">Tree</span>] <span class="kw">deriving</span> <span class="kw">Show</span></code></pre>
+<p>The type of deserialized result is an instance of <code>Sym</code>. The entire deserializer function is written in open recursion style. This make it easy to extend when pattern matching against new serialized expression. Not going through in detail here, better example could be found in <a href="http://okmij.org/ftp/tagless-final/course/SerializeExt.hs">this code</a>. To get the feeling of deserializer function, showing arguments and type signature.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; deserializeFD' self t g <span class="fu">=</span> <span class="fu">undefined</span></code></pre>
+<p>The body of deserializer uses pattern matching, with checking its type. Its body contains all possible pattern matches, and possibly delegation to <code>self</code> function given as first argument. The actual code could be found in tagless deserializer link shown above. What concern here is its type signature.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">deserializeFD' </span><span class="ot">::</span> forall r<span class="fu">.</span> <span class="dt">DsrlFD</span> r <span class="ot">-&gt;</span> <span class="dt">DsrlFD</span> r</code></pre>
+<p>We need to tie the knot to use this deserializer. Since variable environment differs in each recursion, higher rank fixed point combinator is required.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">type</span> <span class="dt">DsrlFD</span> r <span class="fu">=</span><br />&gt;   forall g h<span class="fu">.</span> (<span class="dt">Sym</span> r, <span class="dt">EnvFD</span> g h) <span class="ot">=&gt;</span> <span class="dt">Tree</span> <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> (<span class="dt">Term</span> r h)<br />&gt; <br />&gt; <span class="ot">fixFD </span><span class="ot">::</span> (forall r<span class="fu">.</span> <span class="dt">DsrlFD</span> r <span class="ot">-&gt;</span> <span class="dt">DsrlFD</span> r) <span class="ot">-&gt;</span> <span class="dt">DsrlFD</span> r<br />&gt; fixFD f <span class="fu">=</span> f (fixFD f)</code></pre>
+<p>Now we can tie the knot and get the deserializer function.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="ot">deserializeFD </span><span class="ot">::</span> (<span class="dt">EnvFD</span> g h, <span class="dt">Sym</span> r) <span class="ot">=&gt;</span> <span class="dt">Tree</span> <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> (<span class="dt">Term</span> r h)<br />&gt; deserializeFD <span class="fu">=</span> fixFD deserializeFD'</code></pre>
+<p>Lets do the same with TypeFamilies. Before writing the contents of deserializer function, let’s check that we can tie the knot with higher rank fixed point combinator, since we already know that need this to support open recursion.</p>
+<pre class="sourceCode"><code class="sourceCode haskell">&gt; <span class="kw">type</span> <span class="dt">DsrlTF</span> r <span class="fu">=</span><br />&gt;   forall g h<span class="fu">.</span> (<span class="dt">Sym</span> r, <span class="dt">EnvTF</span> g, h <span class="fu">~</span> <span class="dt">Value</span> g)<br />&gt;   <span class="ot">=&gt;</span> <span class="dt">Tree</span> <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> (<span class="dt">Term</span> r h)<br />&gt; <br />&gt; <span class="ot">deserializeTF' </span><span class="ot">::</span> forall r<span class="fu">.</span> <span class="dt">DsrlTF</span> r <span class="ot">-&gt;</span> <span class="dt">DsrlTF</span> r<br />&gt; deserializeTF' <span class="fu">=</span> <span class="fu">undefined</span><br />&gt; <br />&gt; <span class="ot">fixTF </span><span class="ot">::</span> (forall r<span class="fu">.</span> <span class="dt">DsrlTF</span> r <span class="ot">-&gt;</span> <span class="dt">DsrlTF</span> r) <span class="ot">-&gt;</span> <span class="dt">DsrlTF</span> r<br />&gt; fixTF f <span class="fu">=</span> <span class="fu">undefined</span><br />&gt; <br />&gt; <span class="ot">deserializeTF </span><span class="ot">::</span> (<span class="dt">EnvTF</span> g, h <span class="fu">~</span> <span class="dt">Value</span> g) <span class="ot">=&gt;</span> <span class="dt">Tree</span> <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> (<span class="dt">Term</span> r h)<br />&gt; deserializeTF <span class="fu">=</span> <span class="fu">undefined</span></code></pre>
+<p>But, when we try to tie the knot, ghci shows an error:</p>
+<pre><code>| ghci&gt; :t fixTF deserializeTF'
+| &lt;interactive&gt;:1:7:
+|     Couldn't match expected type `forall g h.
+|                                   (Sym r1, EnvTF g, h ~ Value g) =&gt;
+|                                   Tree -&gt; g -&gt; Either String (Term r1 h)'
+|                 with actual type `forall g h.
+|                                   (Sym r0, EnvTF g, h ~ Value g) =&gt;
+|                                   Tree -&gt; g -&gt; Either String (Term r0 h)'
+|     Expected type: DsrlTF r1 -&gt; Tree -&gt; g -&gt; Either String (Term r1 h)
+|       Actual type: DsrlTF r0 -&gt; Tree -&gt; g0 -&gt; Either String (Term r0 h0)
+|     In the first argument of `fixTF', namely `deserializeTF''
+|     In the expression: fixTF deserializeTF'
+</code></pre>
+<p>TypeFamily variant is not working.</p>
+<p>The error message showing that <code>r</code>, <code>g</code>, and <code>h ~ Value</code> differing in each recursion. In current GHC implementation of type families, it does not allow us to overlap this with different value. So far I understand, that was the point. Though, I don’t think I fully understand what’s happening here, yet.</p>
+<hr></hr>
+<p>By the way … another codes that could not written in TF but in FD, <a href="http://okmij.org/ftp/Haskell/solve-read-show.lhs">the silver bullet</a> of <a href="haskell-sc-scratch/Scratch/Oleg/typecast/">typecast</a>, in this case, used for solving read-show problem.</p>
+</div>
+
+<div class="post_tags">
+  <strong>Tags: </strong><a href="../tags/haskell.html">haskell</a>, <a href="../tags/typefamily.html">typefamily</a>, <a href="../tags/functionaldependency.html">functionaldependency</a>
+</div>
+
+
+      </div>
+      <div id="footer">
+        <div id="footer_content">
+          <p>
+            <a href="../index.html">Home</a> |
+            <a href="../archive.html">Archive</a> |
+            <a href="../rss.xml">RSS</a>
+          </p>
+
+          Site contents licensed under
+          <a href="http://creativecommons.org/licenses/by/3.0/">
+            CC Attribution 3.0
+          </a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
