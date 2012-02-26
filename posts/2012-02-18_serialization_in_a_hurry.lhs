@@ -80,7 +80,7 @@ ready to serialize.
 
 > instance Serialize Foo
 
-Testing it with write to file, reading from the file and comparing
+Testing it with writing to file, reading from the file and comparing
 with original:
 
 > main :: IO ()
