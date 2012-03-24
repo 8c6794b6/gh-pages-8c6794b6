@@ -1,0 +1,75 @@
+---
+title: Calling itself as a dependency in cabal package
+author: 8c6794b6
+date: March 24, 2012
+tags: haskell, cabal, package
+description: Calling itself as a dependency in cabal package
+---
+
+For self reminder. When we're creating cabal package, sometime we want
+to call itself as a depdency, for instance when making a package with
+library and bundled executable, using cabal's test-suite feature.
+
+For quite a while I didn't realise that we can call itself as
+dependency and suppress compiling the whole library modules used in
+exectuables and tests. The trick was, *separating the directory
+containing library source and executable source* in single package.
+
+Sample cabal config:
+
+> name:          selfdep
+> build-type:    Simple
+> cabal-version: >=1.8
+>
+> library
+>   exposed-modules:
+>     Self.Dep
+>     Self.Dep.Foo
+>     Self.Dep.Bar
+>   build-depends:
+>     base       >= 4.4 && < 5,
+>     containers >= 0.4 && < 1.0
+>
+> test-suite tests
+>   type: exitcode-stdio-1.0
+>   hs-source-dirs: tests
+>   main-is: test.hs
+>   build-depends:
+>     base       >= 4.4 && < 5,
+>     QuickCheck >= 2.4 && < 3,
+>     selfdep -any
+>
+> executable foo
+>   hs-source-dirs: run
+>   main-is: foo.hs
+>   build-depends:
+>     base    >= 4.4 && < 5,
+>     selfdep -any
+
+In file `foo.hs`, module `Self.Dep.Foo` is imported:
+
+    $ cat run/foo.hs
+    module Main where
+
+    import qualified Self.Dep.Foo
+
+    main :: IO ()
+    main = print Self.Dep.Foo.foo
+
+Building the package:
+
+    $ cabal configure && cabal build
+    Resolving dependencies...
+    Configuring selfdep-0.1.0.0...
+    Building selfdep-0.1.0.0...
+    Preprocessing library selfdep-0.1.0.0...
+    [1 of 3] Compiling Self.Dep.Bar     ( Self/Dep/Bar.hs, dist/build/Self/Dep/Bar.o )
+    [2 of 3] Compiling Self.Dep.Foo     ( Self/Dep/Foo.hs, dist/build/Self/Dep/Foo.o )
+    [3 of 3] Compiling Self.Dep         ( Self/Dep.hs, dist/build/Self/Dep.o )
+    Registering selfdep-0.1.0.0...
+    Preprocessing executable 'foo' for selfdep-0.1.0.0...
+    [1 of 1] Compiling Main             ( run/foo.hs, dist/build/foo/foo-tmp/Main.o )
+    Linking dist/build/foo/foo ...
+
+During the compilation of executable `foo`, modules under `Self.*` were not recompiled.
+This separation of the directory works also for tests.
