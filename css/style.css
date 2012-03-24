@@ -97,6 +97,10 @@ div#header_left {
     float: left;
 }
 
+div#header_left a:hover {
+    color: #9F9F9F;
+}
+
 div#site_name {
     font-size: 22px;
     font-width: bold:
@@ -173,15 +177,15 @@ div#home_left {
 }
 
 div#home_about {
-    /* padding: 0; */
-    /* float: left; */
-    /* width: 48%; */
+    padding: 0;
+    float: right;
+    width: 48%;
 }
 
 div#home_contact {
-    /* padding: 0; */
-    /* float: left; */
-    /* width: 48%; */
+    padding: 0;
+    float: left;
+    width: 48%;
 }
 
 div#home_right {
@@ -191,15 +195,15 @@ div#home_right {
 }
 
 div#recent_posts {
-    /* padding: 0; */
-    /* float: right; */
-    /* width: 48%; */
+    padding: 0;
+    float: left;
+    width: 48%;
 }
 
 div#tag_cloud {
-    /* padding: 0; */
-    /* float: right; */
-    /* width: 48%; */
+    padding: 0;
+    float: right;
+    width: 48%;
 }
 
 /**********

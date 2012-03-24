@@ -38,7 +38,7 @@ myConf :: MyConfiguration
 myConf = MyConfiguration
     { numberOfRecentPosts = 3
     , parserState         = defaultHakyllParserState
-    , writerOptions       = defaultHakyllWriterOptions 
+    , writerOptions       = defaultHakyllWriterOptions
       { writerHtml5 = True }
     , atomFeed            = Just myFeedConf
     }

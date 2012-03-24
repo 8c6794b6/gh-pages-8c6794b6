@@ -2,25 +2,14 @@
 title: Home
 ---
 
-<div id="home_left">
-
+<div id="home_up">
 
 <div id="recent_posts">
 ### Recent posts
 <ul id="post_list">
   $recentPosts$
-  <li> [More ...](/archive.html) </li>
 </ul>
 </div>
-
-<div id="tag_cloud">
-### Tags
-$tagcloud$
-</div>
-
-</div>
-
-<div id="home_right">
 
 <div id="home_about">
 ### About
@@ -34,16 +23,31 @@ or kind of like a blog by 8c6794b6.
 
 Github page by 8c6794b6, happend to turned out as kind of like a blog.
 
+The whole contents of this site could be found
+[here](https://github.com/8c6794b6/gh-pages-8c6794b6).
+
+</div>
+
+</div>
+
+<div class="clear"></div>
+
+<div id="home_down">
+
+<div id="tag_cloud">
+### Tags
+$tagcloud$
 </div>
 
 
 <div id="home_contact">
 ### Contact
-Email: *'8c6794b6'* account on gmail.<br />
+Email: *'8c6794b6'* account on gmail<br />
 Elsewhere:
 [GitHub](http://github.com/8c6794b6),
 [SoundCloud](http://soundcloud.com/warm-fuzzy-thing),
 [twitter](http://twitter.com/8c6794b6)
+</div>
 
 </div>
 
