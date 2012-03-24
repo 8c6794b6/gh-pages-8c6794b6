@@ -41,6 +41,10 @@ h1 {
     color: #6F6F6F;
 }
 
+h3 {
+    color: #6F6F6F;
+}
+
 ul li {
     list-style-type: circle;
     padding: 5px;
@@ -86,7 +90,11 @@ div#header a {
 
 div#header_contents {
     width: 800px;
-    margin: 0 auto;
+    margin: 30px auto;
+}
+
+div#header_left {
+    float: left;
 }
 
 div#site_name {
@@ -106,14 +114,14 @@ div#site_name_contents {
 }
 
 div#site_name {
-    font-size: 30px;
+    /* font-size: 30px; */
     margin: 0;
     padding: 0 0 8px 0;
 }
 
 div#site_name a {
     color: #6F6F6F;
-    font-size: 30px;
+    /* font-size: 30px; */
 }
 
 div#content {
@@ -128,8 +136,17 @@ div#navigation {
 }
 
 div#navigation a {
-    margin-left: 10px;
+    margin-left: 35px;
 }
+
+div#navigation a:hover {
+    border-bottom: solid 2px #AFAFAF;
+}
+
+div#navigation a:active {
+    border-bottom: solid 2px #AFAFAF;
+}
+
 
 /********
  * Footer
