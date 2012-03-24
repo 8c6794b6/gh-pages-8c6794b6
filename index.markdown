@@ -32,8 +32,7 @@ kind of like a
 or kind of like a blog by 8c6794b6.
 -->
 
-This is a github page by 8c6794b6, happend to turned out as kind of like
-a blog.
+Github page by 8c6794b6, happend to turned out as kind of like a blog.
 
 </div>
 
