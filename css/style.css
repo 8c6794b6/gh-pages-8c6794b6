@@ -32,6 +32,7 @@ pre {
     background-color: #2B2B2B;
     font-size: 13px;
     line-height: 110%;
+    overflow: auto;
 }
 
 
@@ -89,7 +90,8 @@ div#header a {
 }
 
 div#header_contents {
-    width: 800px;
+    width: 70%;
+    max-width: 900px;
     margin: 30px auto;
 }
 
@@ -111,7 +113,8 @@ div#site_name {
 }
 
 div#site_name_contents {
-    width: 800px;
+    width: 70%;
+    max-width: 900px;
     /* margin: 20px auto 0 auto; */
     margin: 0 auto;
     padding: 50px 0 16px 0;
@@ -129,7 +132,8 @@ div#site_name a {
 }
 
 div#content {
-    width: 800px;
+    width: 70%;
+    max-width: 900px;
     margin: 0px auto 10px auto;
     background-color: #FFFFFF;
     /* border-top: dotted 2px #9E9E9E; */
