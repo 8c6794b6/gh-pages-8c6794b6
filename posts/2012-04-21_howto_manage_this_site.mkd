@@ -35,6 +35,7 @@ commit the contents of `_site`:
     [~/repos/gh-pages-8c6794b6/_site] $ git add -i
     ... add new post, new tags, update archives, rss, tags, etc ...
     [~/repos/gh-pages-8c6794b6/_site] $ git commit -m "Add new post"
+    [~/repos/gh-pages-8c6794b6/_site] $ git push origin master
 
 Now add the updated submodule to `gh-pages-8c6794b6` repository:
 
