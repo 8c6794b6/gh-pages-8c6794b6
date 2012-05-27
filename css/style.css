@@ -11,19 +11,8 @@ html {
 
 body {
     background-color: #FFFFFF;
-    margin: 0;
+    margin-top: 0px;
     padding; 0;
-}
-
-div#header {
-    font-size: 18;
-    font-weight: bold;
-    background-color: #FFFFFF;
-    /* background-color: #c3ccc3; */
-    margin: 0 0 10px 0;
-    position: relative;
-    padding: 8px 0 28px 0;
-    /* border-top: solid 3px #C2C2C2; */
 }
 
 pre {
@@ -85,6 +74,16 @@ div.clear {
  * Header
  *********/
 
+div#header {
+    font-size: 18;
+    font-weight: bold;
+    background-color: #FFFFFF;
+    /* background-color: #c3ccc3; */
+    margin: 0 0 10px 0;
+    position: relative;
+    padding: 8px 0 28px 0;
+}
+
 div#header a {
     color: #696969;
     text-decolation: none;
@@ -132,12 +131,16 @@ div#site_name a {
     /* font-size: 30px; */
 }
 
+/*********
+ * Content
+ *********/
+
 div#content {
     width: 70%;
     max-width: 900px;
     margin: 0px auto 10px auto;
     background-color: #FFFFFF;
-    /* border-top: dotted 2px #9E9E9E; */
+    height: 100%;
 }
 
 div#content a:hover {
