@@ -1,7 +1,7 @@
 --
 title: Tip using 'asTypeOf'
 author: 8c6794b6
-date: Oct 11, 2012
+date: October 11, 2012
 tags: haskell, tips
 description: A tip using 'asTypeOf' to fix types
 --

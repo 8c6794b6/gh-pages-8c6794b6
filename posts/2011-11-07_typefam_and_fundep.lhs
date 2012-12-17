@@ -243,7 +243,8 @@ recursion.
 > fixTF :: (forall r. DsrlTF r -> DsrlTF r) -> DsrlTF r
 > fixTF f = undefined
 >
-> deserializeTF :: (EnvTF g, h ~ Value g) => Tree -> g -> Either String (Term r h)
+> deserializeTF ::
+>   (EnvTF g, h ~ Value g) => Tree -> g -> Either String (Term r h)
 > deserializeTF = undefined
 
 But, when we try to tie the knot, ghci shows an error:

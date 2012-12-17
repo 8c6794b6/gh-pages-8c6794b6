@@ -11,6 +11,17 @@ title: Home
 </ul>
 </div>
 
+<div id="tag_cloud">
+### Tags
+$tagcloud$
+</div>
+
+</div>
+
+<div class="clear"></div>
+
+<div id="home_down">
+
 <div id="home_about">
 ### About
 
@@ -21,23 +32,11 @@ kind of like a
 or kind of like a blog by 8c6794b6.
 -->
 
-Github page by 8c6794b6, happend to turned out as kind of like a blog. The
-whole contents of this site could be found
+Github page by 8c6794b6, happend to turned out as kind of like a blog.
+The whole contents of this site could be found
 [here](https://github.com/8c6794b6/gh-pages-8c6794b6).
 
 </div>
-
-</div>
-
-<div class="clear"></div>
-
-<div id="home_down">
-
-<div id="tag_cloud">
-### Tags
-$tagcloud$
-</div>
-
 
 <div id="home_contact">
 ### Contact

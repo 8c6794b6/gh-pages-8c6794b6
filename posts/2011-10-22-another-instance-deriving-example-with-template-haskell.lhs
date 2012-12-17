@@ -1,7 +1,7 @@
 ---
 title: Another instance deriving example with template haskell
 author: 8c6794b6
-date: Octover 22, 2011
+date: October 22, 2011
 tags: haskell, templatehaskell
 description: Deriving instance with passing member functions
 ---

@@ -1,7 +1,7 @@
 ---
 title: Adhoc update of ugen parameters
 author: 8c6794b6
-date: Octover 25, 2011
+date: October 25, 2011
 tags: haskell, supercollider, generic
 description: Updating ugen parameters with generics
 ---

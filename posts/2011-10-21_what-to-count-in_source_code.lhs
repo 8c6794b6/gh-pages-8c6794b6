@@ -1,7 +1,7 @@
 ---
 title: What to count in source code
 author: 8c6794b6
-date: Octover 21, 2011
+date: October 21, 2011
 tags: haskell, arc
 description: Counting expressions in haskell source code
 ---
