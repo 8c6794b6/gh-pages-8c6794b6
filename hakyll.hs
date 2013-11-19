@@ -11,9 +11,8 @@ Generates github page contents with Hakyll.
 -}
 module Main where
 
-import Control.Arrow ((>>>), arr)
 import Data.Monoid
-import Text.Pandoc (ParserState, WriterOptions(..))
+import Text.Pandoc (ReaderOptions(..), WriterOptions(..))
 import Hakyll
 
 main :: IO ()
@@ -24,23 +23,23 @@ main = hakyll $ ghPageWith myConf
 data MyConfiguration = MyConfiguration
     { -- | Number of recent posts that are available
       numberOfRecentPosts :: Int
-    , -- | Parser state for pandoc, i.e. read options
-      parserState         :: ParserState
+    , -- | Reader options for pandoc
+      readerOptions       :: ReaderOptions
     , -- | Writer options for pandoc
       writerOptions       :: WriterOptions
     , -- | Atom feed configuration
-      atomFeed            :: Maybe FeedConfiguration
+      atomFeed            :: FeedConfiguration
     } deriving (Show)
 
 -- | Defaults for 'MyConfiguration'
 --
 myConf :: MyConfiguration
 myConf = MyConfiguration
-    { numberOfRecentPosts = 3
-    , parserState         = defaultHakyllParserState
+    { numberOfRecentPosts = 5
+    , readerOptions       = defaultHakyllReaderOptions
     , writerOptions       = defaultHakyllWriterOptions
       { writerHtml5 = True }
-    , atomFeed            = Just myFeedConf
+    , atomFeed            = myFeedConf
     }
 
 -- | Atom feed configuration.
@@ -50,13 +49,17 @@ myFeedConf = FeedConfiguration
   { feedTitle       = "Warm fuzzy thing by 8c6794b6"
   , feedDescription = "Warm and fuzzy"
   , feedAuthorName  = "8c6794b6"
+  , feedAuthorEmail = "8c6794b6@gmail.com"
   , feedRoot        = "http://8c6794b6.github.com"
   }
 
 -- | Version of 'ghPage' which allows setting a config
 --
-ghPageWith :: MyConfiguration -> Rules
+ghPageWith :: MyConfiguration -> Rules ()
 ghPageWith conf = do
+
+    -- Tags
+    tags <- buildTags "posts/*" (fromCapture "tags/*.html")
 
     -- Images, audios and static files
     ["favicon.ico"]            --> copy
@@ -68,36 +71,84 @@ ghPageWith conf = do
     -- CSS files
     ["css/*.css", "style/*.css", "stylesheets/*.css"] --> css
 
-    -- "Dynamic" content
-    ["posts/*"] --> post
+    -- Posts
+    match "posts/*" $ do
+        let postCtx = tagsCtx tags
+        route $ setExtension "html"
+        compile $ pandocCompilerWith (readerOptions conf) (writerOptions conf)
+            >>= loadAndApplyTemplate "templates/post.html" postCtx
+            >>= saveSnapshot "content"
+            >>= loadAndApplyTemplate "templates/default.html" postCtx
+            >>= relativizeUrls
 
-    -- Top-level pages
-    ["*.markdown", "*.html", "*.rst", "*.lhs"] --> topLevel
+    -- Archive
+    create ["archive.html"] $ do
+        route idRoute
+        compile $ do
+            posts <- recentFirst =<< loadAll "posts/*"
+            let archiveCtx =
+                    listField "posts" myCtx (return posts) `mappend`
+                    constField "title" "Archive" `mappend`
+                    defaultContext
+            makeItem ""
+                >>= loadAndApplyTemplate "templates/post-list.html" archiveCtx
+                >>= loadAndApplyTemplate "templates/default.html" archiveCtx
+                >>= relativizeUrls
 
-    -- Tags
-    create "tags" $ do
-      requireAll "posts/*" (\_ ps -> readTags ps :: Tags String)
+    -- Index
+    create ["index.html"] $ do
+        route $ setExtension "html"
+        compile $ do
+            posts <- recentFirst =<< loadAll "posts/*"
+            let lists = listField "posts" myCtx (return $ take nRecent posts)
+                tags' = field "tagcloud" (const $ renderTagCloud 100 200 tags)
+                title = constField "title" "Home"
+                topCtx = lists `mappend` tags' `mappend` title `mappend`
+                         defaultContext
+            getResourceBody
+                >>= applyAsTemplate topCtx
+                >>= loadAndApplyTemplate "templates/default.html" topCtx
+                >>= relativizeUrls
 
-    -- 'Tagged as' list
-    match "tags/*" $ route $ setExtension ".html"
-    metaCompile $ require_ "tags"
-      >>> arr tagsMap
-      >>> arr (map (\(t, p) -> (tagIdentifier t, makeTagList t p)))
+    -- 404
+    create ["404.html"] $ do
+        route idRoute
+        compile $ makeItem ""
+            >>= loadAndApplyTemplate "templates/404.html" myCtx
+            >>= loadAndApplyTemplate "templates/default.html" myCtx
+            >>= relativizeUrls
 
-    -- All templates
-    ["templates/*"] --> template
+    -- Tagged posts
+    tagsRules tags $ \tag pattern -> do
+        let title = "Posts tagged &#8216;" ++ tag ++ "&#8217;"
+        route idRoute
+        compile $ do
+            posts <- recentFirst =<< loadAll pattern
+            makeItem ""
+                >>= loadAndApplyTemplate "templates/post-list.html"
+                    (constField "title" title `mappend`
+                     listField "posts" myCtx (return posts) `mappend`
+                     defaultContext)
+                >>= loadAndApplyTemplate "templates/default.html"
+                     (constField "title" title `mappend`
+                      defaultContext)
+                >>= relativizeUrls
 
-    -- Rss is optional
-    case atomFeed conf of
-        Nothing -> return ()
-        Just f  -> do
-            match  "rss.xml" $ route idRoute
-            create "rss.xml" $ requireAll_ "posts/*" >>> renderRss f
-            return ()
+    -- RSS
+    create ["rss.xml"] $ do
+        route idRoute
+        compile $ do
+            posts <- loadAllSnapshots "posts/*" "content"
+            sorted <- take 10 `fmap` recentFirst posts
+            let ctx = bodyField "description" `mappend` myCtx
+            renderRss (atomFeed conf) ctx sorted
+
+    -- Templates
+    match "templates/*" $ compile templateCompiler
 
   where
-    -- Useful combinator here
-    xs --> f = mapM_ (\p -> match p $ f) xs
+    -- Combinator
+    xs --> f = mapM_ (flip match f) xs
 
     -- Completely static
     copy = route idRoute >> compile copyFileCompiler
@@ -105,55 +156,11 @@ ghPageWith conf = do
     -- CSS directories
     css = route (setExtension "css") >> compile compressCssCompiler
 
-    -- Templates
-    template = compile templateCompiler
-
-    -- Posts
-    post = do
-      route $ setExtension "html"
-      compile $ pageCompilerWith (parserState conf) (writerOptions conf)
-        >>> renderTagsField "prettytags" (fromCapture "tags/*")
-        >>> applyTemplateCompiler "templates/post.html"
-        >>> applyTemplateCompiler "templates/default.html"
-        >>> relativizeUrlsCompiler
-
-    -- Top-level pages
-    topLevel = do
-      route $ setExtension "html"
-      compile $ pageCompilerWithFields (parserState conf)
-        (writerOptions conf) id topLevelFields
-        >>> applyTemplateCompiler "templates/default.html"
-        >>> relativizeUrlsCompiler
-
-    -- Add the fields we need to top-level pages
-    topLevelFields = setFieldPostList recentFirst "allPosts"
-      >>> requireA "tags"
-        (setFieldA "tagcloud" (renderTagCloud tagIdentifier 100 200))
-      >>> setFieldPostList (take nRecent . recentFirst) "recentPosts"
-      >>> setFieldPostList chronological "chronologicalPosts"
-
-    -- Create a post list based on ordering/selection
-    setFieldPostList f k = setFieldPageList f
-      "templates/post-item.html" k "posts/*"
-
     -- Number of most recent posts to show
     nRecent = numberOfRecentPosts conf
 
-    tagIdentifier :: String -> Identifier (Page String)
-    tagIdentifier = fromCapture "tags/*"
+    -- Default context
+    myCtx = dateField "date" "%B %e, %Y"  `mappend` defaultContext
 
-    -- makeTagList :: String -> [Page String] -> Compiler () (Page String)
-    makeTagList tag posts = constA (mempty, posts)
-      >>> addPostList
-      >>> arr (setField "title" ("Posts tagged &#8216;" ++ tag ++ "&#8217;"))
-      >>> applyTemplateCompiler "templates/posts.html"
-      >>> applyTemplateCompiler "templates/default.html"
-      >>> relativizeUrlsCompiler
-
-    -- addPostList :: Compiler (Page String, [Page String]) (Page String)
-    addPostList =
-      setFieldA "posts" $
-      arr (reverse . chronological)
-      >>> require "templates/post-item.html" (\p t -> map (applyTemplate t) p)
-      >>> arr mconcat
-      >>> arr pageBody
+    -- Tagged context
+    tagsCtx tags = tagsField "prettytags" tags `mappend` myCtx

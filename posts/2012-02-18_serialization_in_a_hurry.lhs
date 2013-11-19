@@ -1,7 +1,7 @@
 ---
 title: Serialization in a hurry
 author: 8c6794b6
-date: Feburary 18, 2012
+date: February 18, 2012
 tags: haskell, generic, ghc
 description: Serializing user defined data in a hurry
 ---

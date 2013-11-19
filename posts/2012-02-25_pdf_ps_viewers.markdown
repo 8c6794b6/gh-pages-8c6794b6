@@ -1,7 +1,7 @@
 ---
 title: Minimalistic pdf and ps viewers for linux - Winter/Spring 2012
 author: 8c6794b6
-date: Feburary 25, 2012
+date: February 25, 2012
 tags: linux, pdf, ps
 description: Looking for a pdf/ps viewer in linux, Feb 2012.
 ---

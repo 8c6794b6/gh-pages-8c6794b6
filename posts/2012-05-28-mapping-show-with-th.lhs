@@ -1,10 +1,10 @@
---
+---
 title: Mapping 'show' to tuples with TH
 author: 8c6794b6
 date: May 28, 2012
 tags: haskell, templatehaskell
 description: Mapping 'show' to list containing variable sized tuples with TH
---
+---
 
 Consider:
 

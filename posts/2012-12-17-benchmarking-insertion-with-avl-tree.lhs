@@ -1,10 +1,10 @@
---
+---
 title: Benchmarking insert and member with AVL tree
 author: 8c6794b6
 date: December 17, 2012
 tags: haskell, tree, datastructure, algorithm
 description: Use whnf when benchmarking insertion for trees.
---
+---
 
 While I was reading
 [AVL Tree](https://en.wikipedia.org/wiki/AVL_tree) page on wikipedia,

@@ -1,10 +1,10 @@
---
+---
 title: Tip using 'asTypeOf'
 author: 8c6794b6
 date: October 11, 2012
 tags: haskell, tips
 description: A tip using 'asTypeOf' to fix types
---
+---
 
 I found myself an idiot for such a long time I was not aware of this
 use of `asTypeOf` function.
