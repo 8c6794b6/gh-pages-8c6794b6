@@ -10,9 +10,9 @@ build-type:          Simple
 cabal-version:       >=1.8
 description:
 
-executable hakyll
+executable gh-pages
   main-is:
-    hakyll.hs
+    gh-pages.hs
   ghc-options:
     -Wall
   build-depends:

@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 {-|
 Module      : $Header$
 Maintainer  : 8c6794b6@gmail.com
@@ -11,7 +10,7 @@ Generates github page contents with Hakyll.
 -}
 module Main where
 
-import Data.Monoid
+import Data.Monoid (mappend)
 import Text.Pandoc (ReaderOptions(..), WriterOptions(..))
 import Hakyll
 
@@ -35,7 +34,7 @@ data MyConfiguration = MyConfiguration
 --
 myConf :: MyConfiguration
 myConf = MyConfiguration
-    { numberOfRecentPosts = 5
+    { numberOfRecentPosts = 3
     , readerOptions       = defaultHakyllReaderOptions
     , writerOptions       = defaultHakyllWriterOptions
       { writerHtml5 = True }
@@ -73,7 +72,7 @@ ghPageWith conf = do
 
     -- Posts
     match "posts/*" $ do
-        let postCtx = tagsCtx tags
+        let postCtx = tagsField "prettytags" tags `mappend` myCtx
         route $ setExtension "html"
         compile $ pandocCompilerWith (readerOptions conf) (writerOptions conf)
             >>= loadAndApplyTemplate "templates/post.html" postCtx
@@ -97,11 +96,11 @@ ghPageWith conf = do
 
     -- Index
     create ["index.html"] $ do
-        route $ setExtension "html"
+        route idRoute
         compile $ do
             posts <- recentFirst =<< loadAll "posts/*"
             let lists = listField "posts" myCtx (return $ take nRecent posts)
-                tags' = field "tagcloud" (const $ renderTagCloud 100 200 tags)
+                tags' = field "tagcloud" (const $ renderTagCloud 100 250 tags)
                 title = constField "title" "Home"
                 topCtx = lists `mappend` tags' `mappend` title `mappend`
                          defaultContext
@@ -160,7 +159,4 @@ ghPageWith conf = do
     nRecent = numberOfRecentPosts conf
 
     -- Default context
-    myCtx = dateField "date" "%B %e, %Y"  `mappend` defaultContext
-
-    -- Tagged context
-    tagsCtx tags = tagsField "prettytags" tags `mappend` myCtx
+    myCtx = dateField "date" "%B %e, %Y" `mappend` defaultContext
