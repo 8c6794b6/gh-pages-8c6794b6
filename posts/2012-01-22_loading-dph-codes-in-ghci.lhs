@@ -2,7 +2,7 @@
 title: Loading dph codes in ghci
 author: 8c6794b6
 date: January 22, 2012
-tags: haskell, dph, ghci
+tags: haskell, dph, ghc, ghci
 description: How to load dph codes within ghci
 ---
 
