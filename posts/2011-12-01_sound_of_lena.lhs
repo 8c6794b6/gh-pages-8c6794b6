@@ -12,12 +12,12 @@ For instance, using a picture of probably
 as input:
 
 <img style="display:block; margin: 25px auto;"
-     src="http://8c6794b6.github.com/spectrofy/lena_in.bmp" />
+     src="http://github.com/8c6794b6/spectrofy/raw/gh-pages/lena_in.bmp" />
 
 to get a sound with this spectrogram:
 
 <img style="display:block; margin: 25px auto"
-     src="http://8c6794b6.github.com/spectrofy/lena_out.png" />
+     src="http://github.com/8c6794b6/spectrofy/raw/gh-pages/lena_out.png" />
 
 No idea what human beings in stone ages were thinking, but in the ages of
 computers, Iannis Xenakis was already thinking about the use of images as
@@ -33,7 +33,7 @@ by Aphex Twin.
 
 
 There is
-[a nice article](http://devrand.org/view/imageSpectrogram)
+[a nice article](http://www.devrand.org/2013/04/image-to-spectrogram.html)
 which describing about making spectrogram of image with perl,
 it inspired me to do it with haskell. The code used to convert above image
 was implemented in haskell, with
@@ -52,3 +52,8 @@ was created with sox:
 
 The spectrogram shown above was created with above commands. Not with
 [photoshop](http://www.gimp.org).
+
+----
+
+Update: 2013-11-21 - modified link destination of images and spectrogram
+article.
