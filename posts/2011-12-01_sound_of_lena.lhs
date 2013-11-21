@@ -55,5 +55,5 @@ The spectrogram shown above was created with above commands. Not with
 
 ----
 
-Update: 2013-11-21 - modified link destination of images and spectrogram
+Update: November 21, 2013 - modified link destination of images and spectrogram
 article.
