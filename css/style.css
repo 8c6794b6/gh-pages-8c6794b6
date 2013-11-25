@@ -71,7 +71,7 @@ div.clear {
 }
 
 p code {
-    background: #f2f1f2;
+    background: #e0e0e0;
     padding: 0px 3px;
 }
 
@@ -84,9 +84,11 @@ div#header {
     font-size: 18;
     font-weight: bold;
     background-color: #FFFFFF;
-    margin: 0 0 10px 0;
+    /* margin: 0 0 10px 0; */
+    margin: 0px 0px;
     position: relative;
-    padding: 8px 0 28px 0;
+    /* padding: 8px 0 28px 0; */
+    padding: 20px 0px 30px 0px;
 }
 
 div#header a {
@@ -149,7 +151,7 @@ div#content {
     background-color: #FFFFFF;
     height: 100%;
     min-height: 500px;
-    /* padding: 20px; */
+    padding: 10px 0px;
 }
 
 div#content a:hover {
@@ -180,7 +182,7 @@ div#navigation a:active {
 div#footer {
     text-align: center;
     font-size: 11px;
-    margin-top: 30px;
+    /* margin-top: 30px; */
     padding: 80px 0 20px 0;
 }
 

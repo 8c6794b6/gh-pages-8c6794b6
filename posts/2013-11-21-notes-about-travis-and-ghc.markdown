@@ -1,0 +1,21 @@
+---
+title: Notes about travis and ghc
+author: 8c6794b6
+date: November 21, 2013
+tags: ci, ghc, git, travis
+description: Notes about travis CI and ghc version
+---
+
+Brief note about current status of ghc and [travis-ci](http://travis-ci.org).
+
+Recently made a build hook for continuous integration with travis, in one of the
+repository I have in github, by following
+[getting started guide](http://about.travis-ci.org/docs/user/getting-started/).
+The package is requiring `base >= 4.6.0`, which is from `ghc-7.6.*`, though the
+version used in travis build was `base >= 4.5.*`, which is from `ghc-7.4.1`.
+There is [an issue in github](https://github.com/travis-ci/travis-ci/issues/882)
+mentioning ghc version used by travis builds.
+
+It is still possible to use `CPP`, `#ifdef`s and choose the appropriate
+dependency package version. Might be an opportunity to do this, though I'm not
+sure the package worth for having that much maintenance efforts.
