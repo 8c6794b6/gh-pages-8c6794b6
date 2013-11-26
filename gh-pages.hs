@@ -115,7 +115,6 @@ ghPageWith conf = do
         compile $ makeItem ""
             >>= loadAndApplyTemplate "templates/404.html" myCtx
             >>= loadAndApplyTemplate "templates/default.html" myCtx
-            >>= relativizeUrls
 
     -- Tagged posts
     tagsRules tags $ \tag pattern -> do
