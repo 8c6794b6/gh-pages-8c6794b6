@@ -2,7 +2,7 @@
 title: Updating gh-pages
 author: 8c6794b6
 date: November 19, 2013
-tags: hakyll, haskell, git
+tags: git, hakyll, haskell, web
 description: Made an update to gh-pages
 ---
 
