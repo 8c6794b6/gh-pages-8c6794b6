@@ -9,15 +9,8 @@ This post is a scratchy idea for making sound with side
 effects. Sample recording created with side effects from fibonacci sequence
 sounds like this:
 
-<!--
-<p><img class="posterous_plugin_object posterous_plugin_object_audio"
-src="/images/spacer.gif?content_part=ssttFvpystbbpkAsneda" alt=""
-width="100" height="100" /></p>
--->
-
-<audio controls="controls"
-  <source src="/audio/fib.mp3" type="audio/mp3" />
-  <source src="/audio/fib.ogg" type="audio/ogg" />
+<audio controls="controls" src="/audio/fib.ogg"
+       style="display:block; margin: 10px auto;">
 </audio>
 
 During debug, we print out intermediate data, as side effects. Like this, can
