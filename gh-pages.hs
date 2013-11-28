@@ -49,7 +49,7 @@ myFeedConf = FeedConfiguration
   , feedDescription = "Warm and fuzzy"
   , feedAuthorName  = "8c6794b6"
   , feedAuthorEmail = "8c6794b6@gmail.com"
-  , feedRoot        = "http://8c6794b6.github.com"
+  , feedRoot        = "http://8c6794b6.github.io"
   }
 
 -- | Version of 'ghPage' which allows setting a config
