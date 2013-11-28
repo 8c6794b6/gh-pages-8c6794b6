@@ -27,9 +27,13 @@ pre {
 
 
 h1 {
-    font-size: 22px;
-    margin-top: 30px;
+    font-size: 100%;
+    margin: 0;
+}
+
+h2 {
     color: #6F6F6F;
+    font-size: 120%;
 }
 
 h3 {
@@ -81,7 +85,6 @@ p code {
  *********/
 
 div#header {
-    font-size: 18;
     font-weight: bold;
     background-color: #FFFFFF;
     /* margin: 0 0 10px 0; */
@@ -93,7 +96,6 @@ div#header {
 
 div#header a {
     color: #696969;
-    text-decolation: none;
 }
 
 div#header_contents {
@@ -110,34 +112,6 @@ div#header_left {
 
 div#header_left a:hover {
     color: #9F9F9F;
-}
-
-div#site_name {
-    font-size: 22px;
-    font-width: bold:
-    padding: 0;
-    margin: 0;
-    border-bottom: dotted 2px #aeaeae;
-    /* background-color: #69ce69; */
-}
-
-div#site_name_contents {
-    width: 70%;
-    max-width: 900px;
-    /* margin: 20px auto 0 auto; */
-    margin: 0 auto;
-    padding: 50px 0 16px 0;
-}
-
-div#site_name {
-    /* font-size: 30px; */
-    margin: 0;
-    padding: 0 0 8px 0;
-}
-
-div#site_name a {
-    color: #6F6F6F;
-    /* font-size: 30px; */
 }
 
 /*********
