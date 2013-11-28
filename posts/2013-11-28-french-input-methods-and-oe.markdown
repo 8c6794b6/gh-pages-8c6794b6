@@ -2,6 +2,7 @@
 title: French input methods and œ
 author: 8c6794b6
 date: November 28, 2013
+description: Emacs input methods for typing français
 tags: emacs, french
 ---
 
