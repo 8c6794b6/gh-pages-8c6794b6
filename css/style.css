@@ -87,10 +87,8 @@ p code {
 div#header {
     font-weight: bold;
     background-color: #FFFFFF;
-    /* margin: 0 0 10px 0; */
     margin: 0px 0px;
     position: relative;
-    /* padding: 8px 0 28px 0; */
     padding: 20px 0px 30px 0px;
 }
 
@@ -99,9 +97,6 @@ div#header a {
 }
 
 div#header_contents {
-    /* width: 70%; */
-    /* max-width: 900px; */
-    /* width: 656px; */
     width: 780px;
     margin: 30px auto;
 }
@@ -119,7 +114,6 @@ div#header_left a:hover {
  *********/
 
 div#content {
-    /* width: 656px; */
     width: 780px;
     margin: 0px auto 10px auto;
     background-color: #FFFFFF;
@@ -156,7 +150,6 @@ div#navigation a:active {
 div#footer {
     text-align: center;
     font-size: 11px;
-    /* margin-top: 30px; */
     padding: 80px 0 20px 0;
 }
 
@@ -174,7 +167,6 @@ div#footer a:hover {
 
 div#home_about {
     padding: 0;
-    /* float: center; */
     float: right;
     width: 48%;
 }
