@@ -1,7 +1,7 @@
 ---
 title: Syntax for building rose tree
 author: 8c6794b6
-description: Showing couple syntaxes to write rose tree data
+description: Showing couple ways to write contents of rose tree
 tags: datastructure, dsl, haskell, tree
 ---
 
