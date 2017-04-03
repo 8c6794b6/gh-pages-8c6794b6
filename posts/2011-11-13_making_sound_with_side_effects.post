@@ -7,7 +7,7 @@ format: md
 
 This post is a scratchy idea for making sound with side effects. Sample
 recording created with side effects from fibonacci sequence sounds like
-this [ogg](/audio/fib.ogg) file.
+this [ogg](/static/fib.ogg) file.
 
 
 During debug, we print out intermediate data, as side effects. Like
