@@ -1,0 +1,152 @@
+;;;;;
+title: Mapping 'show' to tuples with TH
+date: 2012-05-28
+tags: haskell, templatehaskell
+format: md
+;;;;;
+
+Consider:
+
+    > mapM_ putStrLn [show 1, show (1,2), show (1,2,3), show (1,2,3,4) ...]
+
+The contents of list is String, but before applying 'show', type of
+elements differ. Goal of this post is to express above with using
+template haskell, like:
+
+    > mapM_ putStrLn $(tups 3)
+
+Which expands to:
+
+    > mapM_ putStrLn [show 1, show (1,2), show (1,2,3))]
+
+in caller module.
+
+```haskell
+> {-# LANGUAGE TemplateHaskell #-}
+>
+> module MappingShow where
+>
+> import Control.Applicative
+> import Control.Monad
+> import Language.Haskell.TH
+```
+
+A pretty printer for template haskell Q monad:
+
+```haskell
+> printQ :: Ppr a => Q a -> IO ()
+> printQ q = print . ppr =<< runQ q
+```
+
+Warming up, manually writing the tuple lists, and applying show to them:
+
+```haskell
+> bTup :: Int -> ExpQ
+> bTup n = tupE [litE (integerL j) | j <- [1..fromIntegral n]]
+>
+> take01 :: ExpQ
+> take01 =
+>   [e|
+>    mapM_ putStrLn [show $(bTup 1), show $(bTup 2), show $(bTup 3)]
+>     |]
+```
+
+Result:
+
+    ghci> printQ take01
+    Control.Monad.mapM_ System.IO.putStrLn [GHC.Show.show (1),
+                                            GHC.Show.show (1, 2),
+                                            GHC.Show.show (1, 2, 3)]
+
+We cannot write:
+
+    > take02 = [e| map putStrLn [show $(bTup i) | i <- [1..10]] |]
+
+staging error occurs:
+
+    Stage error: `i' is bound at stage 2 but used at stage 1
+    In the first argument of `bTup', namely `i'
+    In the expression: bTup i
+    In the first argument of `show', namely `$(bTup i)'
+
+So we cannot directly build a list of tuple with passing argument, `i`
+in above case. Though, since 'Q' is a Monad, we can run it, and then
+rebind it:
+
+```haskell
+> tups :: Int -> ExpQ
+> tups n = runQ $ do
+>   ts <- foldM (\acc i -> (:acc) <$> bTup i) [] [1..n]
+>   return $ ListE $ map (AppE (VarE 'show)) (reverse ts)
+```
+
+Results:
+
+    ghci> printQ $ tups 10
+    [GHC.Show.show (1),
+     GHC.Show.show (1, 2),
+     GHC.Show.show (1, 2, 3),
+     GHC.Show.show (1, 2, 3, 4),
+     GHC.Show.show (1, 2, 3, 4, 5),
+     GHC.Show.show (1, 2, 3, 4, 5, 6),
+     GHC.Show.show (1, 2, 3, 4, 5, 6, 7),
+     GHC.Show.show (1, 2, 3, 4, 5, 6, 7, 8),
+     GHC.Show.show (1, 2, 3, 4, 5, 6, 7, 8, 9),
+     GHC.Show.show (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)]
+
+We can build a list of String elements in caller module, or prepare a
+template haskell expression which does the 'mapM\_ putStrLn':
+
+```haskell
+> mapShowTuples :: Int -> ExpQ
+> mapShowTuples n = (varE 'mapM_ `appE` varE 'putStrLn) `appE` tups n
+```
+
+Results:
+
+    ghci> printQ $ mapShowTuples 8
+    Control.Monad.mapM_ System.IO.putStrLn [GHC.Show.show (1),
+                                            GHC.Show.show (1, 2),
+                                            GHC.Show.show (1, 2, 3),
+                                            GHC.Show.show (1, 2, 3, 4),
+                                            GHC.Show.show (1, 2, 3, 4, 5),
+                                            GHC.Show.show (1, 2, 3, 4, 5, 6),
+                                            GHC.Show.show (1, 2, 3, 4, 5, 6, 7),
+                                            GHC.Show.show (1, 2, 3, 4, 5, 6, 7, 8)]
+
+Sample caller module may look like below:
+
+    {-# LANGUAGE TemplateHaskell #-}
+    import MappingShow
+
+    t8s :: [String]
+    t8s = $(tups 8)
+
+    t8s_view :: IO ()
+    t8s_view = mapM_ putStrLn t8s
+
+    t8s_view_th :: IO ()
+    t8s_view_th = $(mapShowTuples 8)
+
+    main :: IO ()
+    main = t8s_view >> t8s_view_th
+
+Result of running 'main':
+
+    ghci> main
+    1
+    (1,2)
+    (1,2,3)
+    (1,2,3,4)
+    (1,2,3,4,5)
+    (1,2,3,4,5,6)
+    (1,2,3,4,5,6,7)
+    (1,2,3,4,5,6,7,8)
+    1
+    (1,2)
+    (1,2,3)
+    (1,2,3,4)
+    (1,2,3,4,5)
+    (1,2,3,4,5,6)
+    (1,2,3,4,5,6,7)
+    (1,2,3,4,5,6,7,8)

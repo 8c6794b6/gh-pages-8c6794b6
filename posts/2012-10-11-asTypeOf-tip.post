@@ -1,0 +1,53 @@
+;;;;;
+title: Tip using 'asTypeOf'
+date: 2012-10-11
+tags: haskell, tips
+format: md
+;;;;;
+
+I found myself an idiot for such a long time I was not aware of this use
+of `asTypeOf` function.
+
+```haskell
+> module AsTypeOf where
+```
+
+When we have a type with multiple varialbles, e.g. `Either`:
+
+```haskell
+> rightChar = Right 'a'
+```
+
+In ghci:
+
+    ghci> :t rightChar
+    rightChar :: Either a Char
+
+We are yet not sure for remaining type variables. In above case, we
+still do not have a clue to fix the type of `Left` constructor.
+
+One way to fix the type used for `Left` is wrapping multiple values in
+single list:
+
+```haskell
+> rightCharInList = [rightChar, Left True]
+```
+
+Showing the type:
+
+    ghci> :t rightCharInList
+    rightCharInList :: [Either Bool Char]
+
+Or another, using `asTypeOf` instead of list:
+
+```haskell
+> rightChar' = rightChar `asTypeOf` Left True
+```
+
+Now the type for `Left` constructor is fixed, value is identical to
+`rightChar`:
+
+    ghci> rightChar'
+    Right 'a'
+    ghci> :t rightChar'
+    rightChar' :: Either Bool Char

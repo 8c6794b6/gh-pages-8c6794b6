@@ -1,0 +1,192 @@
+;;;;;
+title: Guard, case, and pattern match
+date: 2012-05-27
+tags: haskell, performance, ghc
+format: md
+;;;;;
+
+I tend to use case with tuples when a function takes more than one
+arguments. Alternate to tupling, we can write with guards or, with
+direct pattern match in function arguments.
+
+What differences we can find in compiled result?
+
+```haskell
+> {-# LANGUAGE BangPatterns #-}
+> module GuardCasePatmatch where
+>
+> import Criterion.Main
+> import Data.Int
+```
+
+Target function is, naive power function. First, with guard:
+
+```haskell
+> pow_guard :: Int64 -> Int64 -> Int64
+> pow_guard !a !b
+>   | b == 0    = 1
+>   | otherwise = a * pow_guard a (b-1)
+```
+
+Next, tupled case:
+
+```haskell
+> pow_case :: Int64 -> Int64 -> Int64
+> pow_case !a !b = case (a,b) of
+>   (_,0) -> 1
+>   _     -> a * pow_case a (b-1)
+```
+
+Last, pattern match
+
+```haskell
+> pow_patmatch :: Int64 -> Int64 -> Int64
+> pow_patmatch !a 0 = 1
+> pow_patmatch !a !b = a * pow_patmatch a (b-1)
+```
+
+Testing that all three give same result:
+
+```haskell
+> test :: Bool
+> test = all id [f x y | x <- [1..32], y <- [1..32]] where
+>   f a b =
+>     let pc = pow_case a b
+>         pg = pow_guard a b
+>         pp = pow_patmatch a b
+>     in  pc == pg && pg == pp
+```
+
+Result:
+
+    ghci> test
+    True
+
+Seems fine. Now benchmarking:
+
+```haskell
+> main :: IO ()
+> main = defaultMain
+>  [ bench "guard" (nf (pow_guard 2) 64)
+>  , bench "case" (nf (pow_case 2) 64)
+>  , bench "patmatch" (nf (pow_patmatch 2) 64)
+>  ]
+```
+
+Compile and run:
+
+    $ ghc --numeric-version
+    7.4.1
+    $ ghc -fllvm -optl-O3 -O3 -o a.out -main-is GuardCasePatmatch gcp.lhs
+
+Result:
+
+    benchmarking guard
+    mean: 386.1059 ns, lb 385.6170 ns, ub 386.6460 ns, ci 0.950
+    std dev: 2.640960 ns, lb 2.261563 ns, ub 3.111325 ns, ci 0.950
+
+    benchmarking case
+    mean: 382.4345 ns, lb 382.0820 ns, ub 382.8864 ns, ci 0.950
+    std dev: 2.030602 ns, lb 1.667205 ns, ub 2.567343 ns, ci 0.950
+
+    benchmarking patmatch
+    mean: 385.1643 ns, lb 384.6979 ns, ub 385.7441 ns, ci 0.950
+    std dev: 2.657997 ns, lb 2.163594 ns, ub 3.363755 ns, ci 0.950
+
+Almost same. How about dumped core?
+
+Exerpt of dumped core of `power_guard` looks like this:
+
+    Rec {
+    GuardCasePatmatch.$wpow_guard [Occ=LoopBreaker]
+      :: GHC.Prim.Int# -> GHC.Prim.Int# -> GHC.Prim.Int#
+    [GblId, Arity=2, Caf=NoCafRefs, Str=DmdType LL]
+    GuardCasePatmatch.$wpow_guard =
+      \ (ww_s2qq :: GHC.Prim.Int#) (ww1_s2qu :: GHC.Prim.Int#) ->
+        case ww1_s2qu of wild_X1r {
+          __DEFAULT ->
+            case GuardCasePatmatch.$wpow_guard ww_s2qq (GHC.Prim.-# wild_X1r 1)
+            of ww2_s2qy { __DEFAULT ->
+            GHC.Prim.*# ww_s2qq ww2_s2qy
+            };
+          0 -> 1
+        }
+    end Rec }
+
+    ...
+
+    GuardCasePatmatch.pow_guard =
+      \ (w_s2qo :: GHC.Int.Int64) (w1_s2qs :: GHC.Int.Int64) ->
+        case w_s2qo of _ { GHC.Int.I64# ww_s2qq ->
+        case w1_s2qs of _ { GHC.Int.I64# ww1_s2qu ->
+        case GuardCasePatmatch.$wpow_guard ww_s2qq ww1_s2qu
+        of ww2_s2qy { __DEFAULT ->
+        GHC.Int.I64# ww2_s2qy
+        }
+        }
+        }
+
+Dumped core of `power_case`:
+
+    Rec {
+    GuardCasePatmatch.$wpow_case [Occ=LoopBreaker]
+      :: GHC.Prim.Int# -> GHC.Prim.Int# -> GHC.Prim.Int#
+    [GblId, Arity=2, Caf=NoCafRefs, Str=DmdType LL]
+    GuardCasePatmatch.$wpow_case =
+      \ (ww_s2qc :: GHC.Prim.Int#) (ww1_s2qg :: GHC.Prim.Int#) ->
+        case ww1_s2qg of wild_X1n {
+          __DEFAULT ->
+            case GuardCasePatmatch.$wpow_case ww_s2qc (GHC.Prim.-# wild_X1n 1)
+            of ww2_s2qk { __DEFAULT ->
+            GHC.Prim.*# ww_s2qc ww2_s2qk
+            };
+          0 -> 1
+        }
+    end Rec }
+
+    ...
+
+    GuardCasePatmatch.pow_case =
+      \ (w_s2qa :: GHC.Int.Int64) (w1_s2qe :: GHC.Int.Int64) ->
+        case w_s2qa of _ { GHC.Int.I64# ww_s2qc ->
+        case w1_s2qe of _ { GHC.Int.I64# ww1_s2qg ->
+        case GuardCasePatmatch.$wpow_case ww_s2qc ww1_s2qg
+        of ww2_s2qk { __DEFAULT ->
+        GHC.Int.I64# ww2_s2qk
+        }
+        }
+        }
+
+And dumped core of `pow_patmatch`:
+
+    Rec {
+    GuardCasePatmatch.$wpow_patmatch [Occ=LoopBreaker]
+      :: GHC.Prim.Int# -> GHC.Prim.Int# -> GHC.Prim.Int#
+    [GblId, Arity=2, Caf=NoCafRefs, Str=DmdType LL]
+    GuardCasePatmatch.$wpow_patmatch =
+      \ (ww_s2qE :: GHC.Prim.Int#) (ww1_s2qI :: GHC.Prim.Int#) ->
+        case ww1_s2qI of wild_X1t {
+          __DEFAULT ->
+            case GuardCasePatmatch.$wpow_patmatch
+                   ww_s2qE (GHC.Prim.-# wild_X1t 1)
+            of ww2_s2qM { __DEFAULT ->
+            GHC.Prim.*# ww_s2qE ww2_s2qM
+            };
+          0 -> 1
+        }
+    end Rec }
+
+    ...
+
+    GuardCasePatmatch.pow_patmatch =
+      \ (w_s2qC :: GHC.Int.Int64) (w1_s2qG :: GHC.Int.Int64) ->
+        case w_s2qC of _ { GHC.Int.I64# ww_s2qE ->
+        case w1_s2qG of _ { GHC.Int.I64# ww1_s2qI ->
+        case GuardCasePatmatch.$wpow_patmatch ww_s2qE ww1_s2qI
+        of ww2_s2qM { __DEFAULT ->
+        GHC.Int.I64# ww2_s2qM
+        }
+        }
+        }
+
+No difference other than bounded names.

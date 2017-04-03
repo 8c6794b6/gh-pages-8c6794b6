@@ -1,0 +1,125 @@
+;;;;;
+title: Migrating to Coleslaw
+date: 2016-12-27
+tags: git, lisp, coleslaw, commonlisp, web
+format: md
+;;;;;
+
+Made updates to this gh-page. The site is still generated with static site
+generator, though the generator has changed
+from [Hakyll](https://jaspervdj.be/hakyll/)
+to [Coleslaw](http://github.com/kingcons/coleslaw).  The site uses
+hand-made scratchy CSS with color scheme borrowed
+from [Solarized](http://ethanschoonover.com/solarized).
+
+Coleslaw is a static site generator written in Common Lisp. As of the
+version included in Quicklisp 2016-12-08, Coleslaw supports plain
+HTML, [Markdown](https://daringfireball.net/projects/markdown/)
+and [reStructuredText](http://docutils.sourceforge.net/rst.html) for
+writing contents. Basic usage of Coleslaw is written
+in [README](https://github.com/kingcons/coleslaw/blob/master/README.md)
+file. Coleslaw uses `.coleslawrc` file to configure the site. The
+configuration file could be placed under the user's home directory (i.e.:
+`$HOME/.coleslawrc`), or under the directory containing all the other
+files for building the site (e.g.: `/path/to/my/site/.coleslawrc`).  It
+uses [Common Lisp port](https://github.com/archimag/cl-closure-template)
+of [Closure Templates](https://developers.google.com/closure/templates/)
+for defining theme templates. Markdown parser used by Coleslaw
+is [3bmd](https://github.com/3b/3bmd).
+
+Coleslaw recommends the use of *plugins* to customize and extend the
+site. The [archive page of this site](../archive.html) and the pages
+showing the posts for each tag are built with simple plugins. Plugins are
+simply a Common Lisp source code, which should be a package with
+Coleslaw's naming convention. The naming convention is
+`coleslaw-NAME_OF_PLUGIN`, where `NAME_OF_PLUGIN` is name of the plugin
+(e.g.: Package name of the `archive` plugin is `coleslaw-archive`).
+Suppose that, the directory containing the static site is structured as
+below:
+
+```
+/path/to/my/site/
+├── .coleslawrc
+├── 404.page
+├── about.page
+├── plugins
+│   ├── archive.lisp
+│   └── tags.lisp
+├── posts
+│   ├── 2011-10-21-what-to-count-in-source-code.post
+│   ├── ...
+│   └── 2016-12-27-migrating-to-coleslaw.post
+├── static
+│   ├── bench-avl-insert-member.html
+│   └── ...
+├── the.archive
+└── themes
+    └── simple
+        ├── archive.tmpl
+        ├── base.tmpl
+        ├── css
+        │   └── style.css
+        ├── index.tmpl
+        ├── post.tmpl
+        └── tag.tmpl
+```
+
+And the contents of `.coleslawrc` similar to below:
+
+```commonlisp
+(:author "8c6794b6"
+ :charset "UTF-8"
+ :deploy-dir "/path/for/deploy/"
+ :domain "http://my.url.com"
+ :plugins ((mathjax)
+           (static-pages)
+           (sitemap)
+           (archive)
+           (tags))
+ :routing ((:post           "posts/~a")
+           (:tag-index      "tag/~a")
+           (:month-index    "date/~a")
+           (:numeric-index  "~d")
+           (:feed           "~a.xml")
+           (:tag-feed       "tag/~a.xml"))
+ :staging-dir "/tmp/coleslaw-staging/"
+ :title "8c6794b6.github.io"
+ :theme "simple")
+```
+
+By evaluating `(coleslaw:main #p"/path/to/my/site")` in Common Lisp,
+coleslaw will generate the site contents. Some of the works done are:
+
+* Load plugins. Coleslaw will look for `coleslaw-mathjax`,
+  `coleslaw-static-pages`, `coleslaw-sitemap`, `coleslaw-archive`, and
+  `coleslaw-tags` under `/path/to/my/site/plugins` and installed
+  coleslaw's source directory. Coleslaw seeks the plugins under the
+  directory named `plugins` of the site contents, and under the Coleslaw's
+  source directory. Plugins `mathjax`, `static-pages`, and `sitemap` are
+  bundled within default coleslaw installation.
+
+* Search the specified theme. Coleslaw will search the
+  `/path/to/my/site/themes` first, then if not found, search for the theme
+  under Coleslaw's default installation. The name of the theme is
+  specified in the file `.coleslawrc`. There is
+  a
+  [guide](https://github.com/kingcons/coleslaw/blob/master/docs/themes.md)
+  for writing theme in the Coleslaw source. The theme `simple` is the one
+  used for this site.
+
+* Copy the files under the directory named `static` in `/path/to/my/site`
+  to the deploy directory.
+
+* Apply functions according to file extensions. Files for post pages have
+  `.post` in its file name, static pages has `.page`, and so on.
+
+For `archive` and `tags` plugins, which are made for this site, the source
+codes and templates are tightly coupled, so the plugins are not much
+reusable.
+
+<!--
+Local Variables:
+mode: markdown;
+fill-column: 74;
+End:
+-->

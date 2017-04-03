@@ -1,0 +1,15 @@
+*.o
+*.hi
+*.fasl
+*.lx64fsl
+*~
+
+_cache
+site
+
+ghpage
+cabal-dev
+
+hakyll
+dist/
+sandbox/

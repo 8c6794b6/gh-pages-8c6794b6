@@ -1,0 +1,25 @@
+{namespace coleslaw.theme.simple}
+{template post}
+<div class="post-title">
+  <h2>{$post.title}</h2>
+  <em class="post-date">{$post.date}</em>
+</div>
+<div class="post">
+  {$post.text |noAutoescape}
+</div>
+{if $post.tags}
+<div class="post-tags">
+  TAGGED: {foreach $tag in $post.tags}<a href="{$config.domain}/tag/{$tag.slug}.html">{$tag.name}</a>{if not isLast($tag)},{sp}{/if}{/foreach}
+</div>
+{/if}
+{if $prev}
+<div class="prev-post-link">
+  Prev: <a href="{$config.domain}/{$prev.url}">{$prev.title}</a>
+</div>
+{/if}
+{if $next}
+<div class="next-post-link">
+  Next: <a href="{$config.domain}/{$next.url}">{$next.title}</a>
+</div>
+{/if}
+{/template}

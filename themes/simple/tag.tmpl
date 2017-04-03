@@ -1,0 +1,13 @@
+{namespace coleslaw.theme.simple}
+{template tag}
+<h2>Contents tagged with "{$tag.name}"</h2>
+<div>
+<ul class="posts">
+{foreach $obj in $contents}
+  <li>
+    <a href="{$config.domain}/{$obj.url}">{$obj.title}</a> - <em>{$obj.date}</em>
+  </li>
+  {/foreach}
+</ul>
+</div>
+{/template}

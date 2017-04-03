@@ -1,0 +1,54 @@
+{namespace coleslaw.theme.simple}
+{template base}
+<!DOCTYPE html>{\n}
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=defice-width, initial-scale=1">
+    <title>8c6794b6.github.io</title>
+    <link href="{$config.domain}/css/style.css"
+          rel="stylesheet" type="text/css" />
+    <link href="http://fonts.googleapis.com/css?family=Noto+Serif"
+          rel="stylesheet" type="text/css" />
+    <link href="http://fonts.googleapis.com/css?family=PT+Serif"
+          rel="stylesheet" type="text/css" />
+    <link rel="icon"
+          type="image/png"
+          href="{$config.domain}/static/favicon.png"/>
+    {if $injections.head}
+      {foreach $injection in $injections.head}
+        {$injection |noAutoescape}
+      {/foreach}
+    {/if}
+  </head>
+  <body>
+    <header>
+      <h1><a href="{$config.domain}/index.html">8c6794b6.github.io</a></h1>
+      <nav>
+        <a href="{$config.domain}/index.html">HOME</a> •
+        <a href="{$config.domain}/about.html">ABOUT</a> •
+        <a href="{$config.domain}/archive.html">ARCHIVE</a> •
+        <a href="{$config.domain}/rss.xml">RSS</a>
+      </nav>
+    </header>
+    <div class="contents">
+      {$raw |noAutoescape}
+    </div>
+    <footer>
+      {if $injections.body}
+      <section class="tags">
+        <h3>Tags</h3>
+        {foreach $inj in $injections.body}
+        {$inj |noAutoescape}
+        {/foreach}
+      </section>
+      {/if}
+
+      Copyright © 2011-2017 8c6794b6;
+      Unless otherwise noted, site contents
+      licensed under <a rel="license"
+      href="http://creativecommons.org/licenses/by-sa/4.0/"> CC-by-SA</a>.
+    </footer>
+  </body>
+</html>
+{/template}

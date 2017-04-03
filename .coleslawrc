@@ -1,0 +1,28 @@
+;;;; -*- mode: lisp -*-
+
+(:author "8c6794b6"
+ :charset "UTF-8"
+ :deploy-dir "~/repos/git/gh-pages-8c6794b6/tmp/"
+ :domain ""
+ :feeds ("lisp")
+ :plugins (;; (incremental)  ;; *Remove comment to enable incremental builds.
+           (mathjax)
+           (tags)
+           (sitemap)
+           (archive)
+           (static-pages)
+           (git-submodule)
+           ;; (versioned)    ;; *Remove comment to enable symlinked, timestamped deploys.
+          )
+ :routing ((:post           "posts/~a")
+           (:tag-index      "tag/~a")
+           (:month-index    "date/~a")
+           (:numeric-index  "~d")
+           (:feed           "~a.xml")
+           (:tag-feed       "tag/~a.xml"))
+ :sitenav ()
+ :staging-dir "/tmp/coleslaw-staging/"
+ :title "8c6794b6.github.io"
+ :theme "simple")
+
+;; * Prerequisites described in plugin docs.

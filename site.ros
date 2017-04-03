@@ -1,0 +1,71 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#| Script for building and serving coleslaw site.
+exec ros -Q -- $0 "$@"
+|#
+(progn
+  (ros:ensure-asdf)
+  (ql:quickload
+   '(:coleslaw :cl-store :clack :lack :lack-middleware-static)))
+
+(defpackage :ros.script.site
+  (:use :cl))
+
+(in-package :ros.script.site)
+
+
+;;; Builder
+
+(defun build (args)
+  (declare (ignore args))
+  (let ((path (uiop:getcwd)))
+    (format t "Invoking coleslaw:main with ~a~%" path)
+    (coleslaw:main path)))
+
+
+;;; Server
+
+(defvar *server* nil)
+
+(defun setup-server (&key (port 6060) (server :woo))
+  (coleslaw::load-config (uiop:getcwd))
+  (assert coleslaw:*config* nil "failed to find .coleslawrc")
+  (let ((deploy-dir (coleslaw:deploy-dir coleslaw:*config*)))
+    (clack:clackup
+     (lack:builder
+      :accesslog
+      (:static :path "/" :root deploy-dir)
+      (lambda (env)
+        (declare (ignore env))
+        `(200 (:content-type "text/html")
+              ,(merge-pathnames (pathname "404.html") deploy-dir))))
+     :server server
+     :port port
+     :use-thread nil)))
+
+(defun serve (args)
+  (declare (ignore args))
+  (setup-server))
+
+
+;;; Main
+
+(defun help ()
+  (princ "USAGE: site [command] [options]
+
+COMMANDS:
+
+   build  - Generate HTML files for the static site
+   serve  - Serve HTML files for browsing
+   help   - Show this help and exit
+
+"))
+
+(defun main (&rest argv)
+  (cond
+    ((null argv) (help))
+    ((equal (car argv) "build") (build (cdr argv)))
+    ((equal (car argv) "serve") (serve (cdr argv)))
+    (t (help))))
+
+;;; vim: set ft=lisp lisp:

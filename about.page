@@ -1,0 +1,18 @@
+;;;;;
+url: about.html
+title: About
+format: md
+;;;;;
+
+This is a static site made by *8c6794b6*, happened to turn out as kind of like
+a blog. This site is generated
+with [coleslaw](http://github.com/kingcons/coleslaw). Whole contents of this
+site could be found <a
+href="http://github.com/8c6794b6/gh-pages-8c6794b6">here</a>.
+
+<!--
+Local Variables:
+mode: markdown
+fill-column: 78
+End:
+-->

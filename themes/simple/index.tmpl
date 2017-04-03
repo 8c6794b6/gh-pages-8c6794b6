@@ -1,0 +1,27 @@
+{namespace coleslaw.theme.simple}
+{template index}
+<h2>Posts</h2>
+<div>
+  <ul class="posts">
+    {foreach $obj in $index.content}
+    {if index($obj) < 3}
+    <li>
+      <a href="{$config.domain}/{$obj.url}">{$obj.title}</a> - <em>{$obj.date}</em>
+    </li>
+    {/if}
+    {/foreach}
+    <!-- <li class="posts-more"> -->
+    <li>
+      <a href="{$config.domain}/archive.html">..... more</a>
+    </li>
+  </ul>
+</div>
+<h2>Contact</h2>
+<div>
+  Email: <em>8c6794b6</em> account on gmail<br/>
+  Elsewhere:
+  <a href="https://github.com/8c6794b6">GitHub</a>,
+  <a href="https://soundcloud.com/warm-fuzzy-thing">SoundCloud</a>,
+  <a href="http://twitter.com/8c6794b6">Twitter</a>.
+</div>
+{/template}

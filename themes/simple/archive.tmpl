@@ -1,0 +1,13 @@
+{namespace coleslaw.theme.simple}
+{template archive}
+<h2>{$archive.title}</h2>
+<div class="archive">
+<ul class="posts">
+  {foreach $obj in $posts}
+  <li>
+    <a href="{$config.domain}/{$obj.url}">{$obj.title}</a> - <em>{$obj.date}</em>
+  </li>
+  {/foreach}
+</ul>
+</div>
+{/template}

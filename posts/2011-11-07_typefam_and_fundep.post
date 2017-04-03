@@ -1,0 +1,316 @@
+;;;;;
+title: A situation when type families does not work, but functional dependencies does
+date: 2011-11-07
+tags: haskell, typefamily, functionaldependency
+format: md
+;;;;;
+
+Simon Peyton Jones has posted [a
+summary](http://www.mail-archive.com/haskell-prime@haskell.org/msg03400.html)
+about relationship between type families and functional dependencies. As
+well as similarities, there exist difference between functional
+dependencies and type families.
+
+I met a code that work with functional dependencies but not with type
+families. As above mailing list thread points out, the root of
+difference comes from how overlapping instance are treated.
+
+The situation I met was combination of overlapping instance with higher
+rank type, and use of open recursion. Sound bit mixed up. To make myself
+clear about this, writing it down in detail.
+
+```haskell
+> {-# LANGUAGE TypeFamilies #-}
+> {-# LANGUAGE FunctionalDependencies, MultiParamTypeClasses #-}
+> {-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
+> {-# LANGUAGE RankNTypes, GADTs #-}
+>
+> module ToFDOrTF where
+```
+
+The code I was working was with heterogeneous collection. All of the
+codes writen here are heavily inspired from [typed tagless interpreter
+by Oleg Kiselyov](http://okmij.org/ftp/tagless-final/course/). Indeed,
+this situation came to me when I was doing the exercise written in one
+of the code shown in tagless-final courses.
+
+Preparing data type to hold term
+
+```haskell
+> data Term r h where
+>   Term :: Ty t -> r h t -> Term r h
+>
+> instance Show (Term r h) where
+>   show (Term typ _) = "Term " ++ show typ
+```
+
+And type representations used in our code. This type representation is
+simplified version written in GADT, more resembles to [this
+version](http://www.comlab.ox.ac.uk/projects/gip/school/tc.hs).
+
+```haskell
+> data Ty t where
+>   TInt  :: Ty Int
+>   TBool :: Ty Bool
+>   TChar :: Ty Char
+>   TList :: Ty t -> Ty [t]
+>   TArr  :: Ty a -> Ty b -> Ty (a->b)
+>
+> instance Show (Ty t) where
+>   show t = case t of
+>     TInt     -> "Int"
+>     TBool    -> "Bool"
+>     TChar    -> "Char"
+>     TList ty -> "[" ++ show ty ++ "]"
+>     TArr a b -> show a ++ " -> " ++ show b
+```
+
+Suppose that, we want to use below expression in DSL.
+
+```haskell
+> class Sym e where
+>   lam  :: Ty a -> e (a,h) b -> e h (a->b)
+>   app  :: e h (a->b) -> e h a -> e h b
+>   z    :: e (a,h) a
+>   s    :: e h a -> e (any,h) a
+>   int  :: Int -> e h Int
+>   add  :: e h Int -> e h Int -> e h Int
+>   char :: Char -> e h Char
+>   bool :: Bool -> e h Bool
+```
+
+A sample newtype to implement string representation of `Sym`.
+
+```haskell
+> newtype S r h = S {unS :: Int -> String}
+>
+> instance Sym S where
+>   lam t e   = S (\h ->
+>     "(\\(x" ++ show h ++ "::" ++ show t ++ ") -> " ++ unS e (h+1) ++ ")")
+>   app e1 e2 = S (\h -> "(" ++ unS e1 h ++ " " ++ unS e2 h ++ ")")
+>   z         = S (\h -> "x" ++ show (h-1))
+>   s v       = S (\h -> unS v (h-1))
+>   int x     = S (\_ -> show x)
+>   add e1 e2 = S (\h -> unS e1 h ++ " + " ++ unS e2 h)
+>   char x    = S (\_ -> [x])
+>   bool x    = S (\_ -> show x)
+```
+
+Sample expression:
+
+```haskell
+> expr1 :: Sym r => r h Int
+> expr1 =
+>   lam TInt (lam TInt (z `add` s z `add` int 3)) `app` (int 1) `app` (int 2)
+>
+> test_expr1 :: IO ()
+> test_expr1 = putStrLn $ unS expr1 0
+```
+
+Viewing the result:
+
+    | ghci> test_expr1
+    | (((\(x0::Int) -> (\(x1::Int) -> x1 + x0 + 3)) 1) 2)
+
+Now, suppose that we want to lookup a variable used in `lam`. What we
+want to do here is to lookup a value from heterogeneous collection.
+
+```haskell
+> data Var t = Var (Ty t) deriving Show
+```
+
+Below is a type class for looking up variable from heterogeneous
+collection, using functional dependencies.
+
+```haskell
+> class EnvFD g h | g -> h where
+>   findvarFD :: Sym r => Int -> g -> Either String (Term r h)
+```
+
+Intention here is to go through the heterogeneous collection with
+specifying index, with decrementing the index after each lookup. When
+given index reaches to 0, we finish the traversal.
+
+```haskell
+> instance EnvFD () () where
+>   findvarFD _ _ = Left "Index out of range"
+>
+> instance EnvFD g h => EnvFD (Var t, g) (t, h) where
+>   findvarFD i (Var typ,g)
+>     | i == 0    = return $ Term typ z
+>     | otherwise = do
+>         Term typ v <- findvarFD (pred i) g
+>         return $ Term typ (s v)
+```
+
+Sample variable environment holding Char, Int, and Bool representations.
+
+```haskell
+> env1 :: (Var Char, (Var Int, (Var Bool, ())))
+> env1 =  (Var TChar, (Var TInt, (Var TBool, ())))
+```
+
+Function to find variable, with functional dependencies. The result type
+is fixed to `(Term S h)`.
+
+```haskell
+> findvarFDS :: EnvFD g h => Int -> g -> Either String (Term S h)
+> findvarFDS = findvarFD
+>
+> test_findvarFDS :: IO ()
+> test_findvarFDS = mapM_ (\idx -> print $ findvarFDS idx env1) [0..3]
+```
+
+Testing above in ghci:
+
+    | ghci> test_findvarFDS
+    | Right Term Char
+    | Right Term Int
+    | Right Term Bool
+    | Left "Index out of range"
+
+Working, as expected.
+
+Lets do this in type families too.
+
+```haskell
+> class EnvTF g where
+>   type Value g :: *
+>   findvarTF :: (Sym r, h ~ Value g) => Int -> g -> Either String (Term r h)
+>
+> instance EnvTF () where
+>    type Value () = ()
+>    findvarTF _ _ = Left "Index out of range"
+>
+> instance (EnvTF g) => EnvTF (Var t, g) where
+>    type Value (Var t, g) = (t, Value g)
+>    findvarTF i (Var typ, g)
+>       | i == 0    = return $ Term typ z
+>       | otherwise = do
+>           Term typ v <- findvarTF (pred i) g
+>           return $ Term typ (s v)
+```
+
+Testing again:
+
+```haskell
+> findvarTFS :: (EnvTF g, h ~ Value g) => Int -> g -> Either String (Term S h)
+> findvarTFS = findvarTF
+>
+> test_findvarTFS :: IO ()
+> test_findvarTFS = mapM_ (\idx -> print $ findvarTFS idx env1) [0..3]
+```
+
+Viewing it with ghci:
+
+    | ghci> test_findvarTFS
+    | Right Term Char
+    | Right Term Int
+    | Right Term Bool
+    | Left "Index out of range"
+
+Working again, as expected.
+
+As pointed out in the mailing list, recursive definition for type
+families works, as shown in `Value` definition of `EnvTF` instance
+definition.
+
+So far, those things working in functional dependencies are also working
+in type families. From here, introducing higher rank type. Now what we
+want to do is to deserialize `Tree` data.
+
+```haskell
+> data Tree = Node String [Tree] deriving Show
+```
+
+The type of deserialized result is an instance of `Sym`. The entire
+deserializer function is written in open recursion style. This make it
+easy to extend when pattern matching against new serialized expression.
+Not going through in detail here, better example could be found in [this
+code](http://okmij.org/ftp/tagless-final/course/SerializeExt.hs). To get
+the feeling of deserializer function, showing arguments and type
+signature.
+
+```haskell
+> deserializeFD' self t g = undefined
+```
+
+The body of deserializer uses pattern matching, with checking its type.
+Its body contains all possible pattern matches, and possibly delegation
+to `self` function given as first argument. The actual code could be
+found in tagless deserializer link shown above. What concern here is its
+type signature.
+
+```haskell
+> deserializeFD' :: forall r. DsrlFD r -> DsrlFD r
+```
+
+We need to tie the knot to use this deserializer. Since variable
+environment differs in each recursion, higher rank fixed point
+combinator is required.
+
+```haskell
+> type DsrlFD r =
+>   forall g h. (Sym r, EnvFD g h) => Tree -> g -> Either String (Term r h)
+>
+> fixFD :: (forall r. DsrlFD r -> DsrlFD r) -> DsrlFD r
+> fixFD f = f (fixFD f)
+```
+
+Now we can tie the knot and get the deserializer function.
+
+```haskell
+> deserializeFD :: (EnvFD g h, Sym r) => Tree -> g -> Either String (Term r h)
+> deserializeFD = fixFD deserializeFD'
+```
+
+Lets do the same with TypeFamilies. Before writing the contents of
+deserializer function, let's check that we can tie the knot with higher
+rank fixed point combinator, since we already know that need this to
+support open recursion.
+
+```haskell
+> type DsrlTF r =
+>   forall g h. (Sym r, EnvTF g, h ~ Value g)
+>   => Tree -> g -> Either String (Term r h)
+>
+> deserializeTF' :: forall r. DsrlTF r -> DsrlTF r
+> deserializeTF' = undefined
+>
+> fixTF :: (forall r. DsrlTF r -> DsrlTF r) -> DsrlTF r
+> fixTF f = undefined
+>
+> deserializeTF ::
+>   (EnvTF g, h ~ Value g) => Tree -> g -> Either String (Term r h)
+> deserializeTF = undefined
+```
+
+But, when we try to tie the knot, ghci shows an error:
+
+    | ghci> :t fixTF deserializeTF'
+    | <interactive>:1:7:
+    |     Couldn't match expected type `forall g h.
+    |                                   (Sym r1, EnvTF g, h ~ Value g) =>
+    |                                   Tree -> g -> Either String (Term r1 h)'
+    |                 with actual type `forall g h.
+    |                                   (Sym r0, EnvTF g, h ~ Value g) =>
+    |                                   Tree -> g -> Either String (Term r0 h)'
+    |     Expected type: DsrlTF r1 -> Tree -> g -> Either String (Term r1 h)
+    |       Actual type: DsrlTF r0 -> Tree -> g0 -> Either String (Term r0 h0)
+    |     In the first argument of `fixTF', namely `deserializeTF''
+    |     In the expression: fixTF deserializeTF'
+
+TypeFamily variant is not working.
+
+The error message showing that `r`, `g`, and `h ~ Value` differing in
+each recursion. In current GHC implementation of type families, it does
+not allow us to overlap this with different value. So far I understand,
+that was the point. Though, I don't think I fully understand what's
+happening here, yet.
+
+* * * * *
+
+By the way ... another codes that could not written in TF but in FD,
+[the silver bullet](http://okmij.org/ftp/Haskell/solve-read-show.lhs) of
+[typecast](haskell-sc-scratch/Scratch/Oleg/typecast/), in this case,
+used for solving read-show problem.

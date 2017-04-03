@@ -1,0 +1,359 @@
+;;;;;
+title: Delimited continuations with monadic functions in Common Lisp
+date: 2017-02-07
+tags: continuation, delimited, monad, commonlisp, lisp
+format: md
+;;;;;
+
+### Introduction
+
+Exploring
+[delimited continuation](https://en.wikipedia.org/wiki/Delimited_continuation) in
+Common Lisp, in
+particular,
+[`shift` and `reset` from Danvy and Filinski](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.43.8753). There
+is [cl-cont](http://quickdocs.org/cl-cont/) package, which supports
+shift/reset style continuation with rewriting expression inside
+`with-call/cc` macro. The implementation shown in this post is simple,
+short (less than 50 lines), and uses monadic functions to capture
+continuations.
+
+### Monad for Continuation
+
+As
+[Wadler mentioned in various papers](http://homepages.inf.ed.ac.uk/wadler/topics/monads.html),
+monads could be used to express continuations. Monads consists of type
+constructor `M` and following two operations:
+
+```Haskell
+unit :: a -> M a
+(★)  :: M a -> (a -> M b) -> M b
+```
+
+It is possible to express concept of Monads in other programming
+languages than Haskell. Several implementation already exist, such as
+in [Scheme](http://okmij.org/ftp/Scheme/monad-in-Scheme.html)
+and [JavaScript](http://okmij.org/ftp/Scheme/monad-in-Scheme.html), to
+name a few. In impure languages, there are not much needs for monad,
+since the problems solved by monads in purely functional language are
+solved with different techniques. Though, one of the programming
+techniques which could be solved with monad, and missing in most
+language is, expressing first class continuation.
+
+One of the programming languages supporting first class continuation is
+Scheme. Scheme has `call-with-current-continuation`, which captures
+undelimited continuation as first class value. Some of the Scheme
+implementations also support delimited continuations. Delimited
+continuations are not in the Scheme language specifications so far,
+though it
+is
+[possible to implement it with undelimited continuations](http://okmij.org/ftp/continuations/implementations.html).
+
+
+### Wrapping Expression Into CPS
+
+In a programming language without builtin support for continuation, one
+need to express the computation in Continuation-Passing-Style (CPS) to
+capture the continuation, and that is where monad is used for. Firstly,
+defining a structure to represent continuation. The structure `CONT` has
+single field, a function taking the current continuation.
+
+```CommonLisp
+(defstruct (cont (:constructor make-cont (fn)))
+  (fn #'values :type function))
+
+(defun run-cont (c k)
+  (funcall (cont-fn c) k))
+```
+
+Defining `unit` and `(★)` to make `CONT` as an instance of monad. In the
+code shown below, `unit` is renamed to `returnc`, and `(★)` is renamed
+to `bindc`.
+
+```CommonLisp
+(defun returnc (x)
+  (make-cont (lambda (k)
+               (funcall k x))))
+
+(defun bindc (c f)
+  (make-cont (lambda (k)
+               (run-cont c (lambda (x)
+                             (run-cont (funcall f x) k))))))
+```
+
+Definition of `returnc` makes CPS representation of `x` wrapped with
+`CONT` structure. `bindc` runs the continuation `c`, then pass the
+result to `f`, and runs the continuation returned by `f` with the
+current continuation `k`. Note that in `bindc`, current continuation `k`
+is not passed to `c` but to the returned value of `f`.
+
+Some examples:
+
+```
+> (run-cont (returnc 'foo) #'values)
+FOO
+> (run-cont (bindc (returnc 21) (lambda (x) (returnc (* x 2)))) #'values)
+42
+```
+
+Adding two syntax helper macros, `letc*` and `progc`. The macro `letc*`
+is similar to `let*`, but instead of binding result of pure expressions,
+`letc*` binds the variable to the argument passed to the continuation.
+
+```CommonLisp
+(defmacro letc* (bindings &body body)
+  (if (null bindings)
+      `(progn ,@body)
+      (destructuring-bind (name c) (car bindings)
+        `(bindc ,c (lambda (,name)
+                     (letc* ,(cdr bindings) ,@body))))))
+```
+
+The second example shown above could be written with `letc*` as follows:
+
+```
+> (run-cont (letc* ((x (returnc 21)))
+              (returnc (* x 2)))
+            #'values)
+42
+```
+`progc` is similar to `letc*`, but discards the variable, intended to be
+used in the codes where side effects of continuations are the main
+concern.
+
+```CommonLisp
+(defmacro progc (&body body)
+  (if (null (cdr body))
+      (car body)
+      (let ((garg (gensym)))
+        `(bindc ,(car body)
+                (lambda (,garg)
+                  (declare (ignore ,garg))
+                  (progc ,@(cdr body)))))))
+```
+
+
+### Shift And Reset
+
+With monadic interfaces for continuation, `shift` and `reset` could be
+expressed as below. The function `reset` unwrap the `CONT` structure if
+the given argument is `CONT`, otherwise returns the given value itself.
+
+```CommonLisp
+(defun reset (k)
+  (if (cont-p k)
+      (run-cont k #'values)
+      k))
+```
+
+The macro `shift` binds the current continuation to given `var` as a
+function defined with `flet`, and then invoke the `expr`. Inside `expr`,
+bounded continuation could be invoked as an ordinary function. In other
+words, `shift` captures the continuation from the captured place until
+the first appearance of enclosing `reset`.
+
+```CommonLisp
+(defmacro shift (var expr)
+  (let ((gk (gensym))
+        (garg (gensym)))
+    `(make-cont (lambda (,gk)
+                  (declare (function ,gk))
+                  (flet ((,var (,garg)
+                           (funcall ,gk ,garg)))
+                    (declare (ignorable (function ,var)))
+                    ,expr)))))
+```
+
+Evaluating some sample expressions with `shift` and `reset`. The
+resulting value of `shift` is a `CONT`:
+
+```
+> (shift k (k 2))
+#S(CONT :FN #<FUNCTION (LAMBDA (#:G656)) {1004B9A55B}>)
+```
+
+To perform the computation in `CONT`, one can apply `reset`:
+
+```
+> (reset (shift k (k 2))
+2
+```
+
+The resulting `CONT` object from `shift` could be passed to `bindc`, as
+those made from `returnc`:
+
+```
+> (reset (letc* ((x (shift k (k 2))))
+           (returnc (+ x 3))))
+5
+```
+
+When the expression in `shift` returns without calling captured
+continuation, the whole computation will escape immediately. Instead of
+the sum of `x` and `y` or an error from `+`, following expression
+evaluates as symbol `FOO`:
+
+```
+> (reset (letc* ((x (returnc 100))
+                 (y (shift k 'foo)))
+           (returnc (+ x y))))
+FOO
+```
+
+Since captured continuation is an ordinary function, it could be invoked
+multiple times. In the following expression, the captured computation
+with `shift` could be viewed as `(lambda (x) (+ x 3))`. The captured
+continuation is applied twice, which results in `(+ (+ 2 3) 3)`:
+
+```
+> (reset (letc* ((x (shift k (k (k 2)))))
+           (returnc (+ x 3))))
+8
+```
+
+Inside the expression of `shift`, further computation could be done with
+returned value from captured computation. Following expression applies
+captured continuation twice as in previous example, then multiplies by
+`2`:
+
+```
+> (reset (letc* ((x (shift k (* 2 (k (k 2))))))
+           (returnc (+ x 3))))
+16
+```
+
+In the implementation of `shift` and `reset` shown here, continuations
+are captured with monad, hence some wrapping with `returnc` and
+unwrapping with `letc*` are required. In an implementation which has
+builtin support of `shift` and `reset`
+(e.g.: [Racket](https://racket-lang.org/)), the last example could be
+written as:
+
+```
+> (reset (+ (shift k (* 2 (k (k 2)))) 3))
+16
+```
+
+### Example: Nondeterminism
+
+One common use of continuation is for nondeterministic
+programming. Showing an implementation of `choice` from
+the
+[Danvy and Filinski's paper](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.43.8753),
+and its use with function `triple`. The problem we have is to find out
+all triples of distinct positive integers `i`, `j`, and `k` less than or
+equal to a given integer `n` that sums to a given integer `s`:
+
+```CommonLisp
+(defun fail ()
+  (shift k 'no))
+
+(defun choice (n)
+  (shift k (loop for i from 1 to n do (k i) finally 'no)))
+
+(defun triple (n s)
+  (letc* ((i (choice n))
+          (j (choice (- i 1)))
+          (k (choice (- j 1))))
+    (if (= s (+ i j k))
+        (returnc (list i j k))
+        (fail))))
+```
+
+To print the results of `triple`, one may write as follows:
+
+```CommonLisp
+> (reset (letc* (ijk (triple 9 15)))
+           (returnc (print ijk))))
+(6 5 4)
+(7 5 3)
+(7 6 2)
+(8 4 3)
+(8 5 2)
+(8 6 1)
+(9 4 2)
+(9 5 1)
+NIL
+```
+
+Note that unlike the original example in the paper, the version of
+`shift` in this post returns a value of `CONT` structure. The expression
+`(triple 9 15)` is evaluated as `CONT` structure, not the answer values
+returned by `(returnc (list i j k))`. The answers need to be unwrapped
+with `letc*` or `bindc` to print with `print` function.
+
+
+### Example: Coroutine
+
+Another famous problem solved with continuation is, so-called the
+*same-fringe* problem. Two binary trees have the same fringe if they
+have exactly the same leaves reading from left to right. The problem is
+to decide whether two binary trees have the same fringe. Basically, we
+want to return from the tree traversal as soon as we detect that the
+trees are different.
+
+```CommonLisp
+(defun donep (x) (eq 'done x))
+
+(defun nextp (x) (not (donep x)))
+
+(defun next (n k) (lambda () (values n k)))
+
+(defun walkerc (tree)
+  (cond
+    ((null tree) (returnc 'done))
+    ((atom tree) (shift k (next tree #'k)))
+    (t (progc
+         (walkerc (car tree))
+         (walkerc (cdr tree))))))
+```
+
+The function `walkerc` takes a tree, returns a `CONT` value. Each
+element of the tree is converted as a closure with the function `next`.
+The closure returns two values: the element and the captured
+continuation. The resulting `CONT` could be viewed as a coroutine
+object, which traverses the tree from right to left order.
+
+With `walkerc`, function `same-fringe` could be written as below:
+
+```CommonLisp
+(defun same-fringe (t1 t2)
+  (labels ((rec (r1 r2)
+             (if (nextp r1)
+                 (and (nextp r2)
+                      (multiple-value-bind (n1 k1) (funcall r1)
+                        (multiple-value-bind (n2 k2) (funcall r2)
+                          (and (eql n1 n2)
+                               (rec (funcall k1 nil)
+                                    (funcall k2 nil))))))
+                 (donep r2))))
+    (rec (reset (walkerc t1))
+         (reset (walkerc t2)))))
+```
+
+Sample runs:
+
+```CommonLisp
+> (same-fringe '((1) (2 (3 (4) 5))) '((1 (2) (3 4) 5)))
+T
+> (same-fringe '((1) (2 (3 (4) 5))) '((1 (2) (4) 5)))
+NIL
+```
+
+### Some thoughts
+
+Both non-deterministic example and coroutine example could be directly written
+in continuation passing style (CPS), which shall be slightly efficient since
+direct CPS does not require to make the `cont` structure.
+
+Te implementation shown in this post is similar to the one done
+by
+[Matthew D Swank](https://groups.google.com/forum/#!topic/comp.lang.lisp/D72jdiAmiBE),
+written in 2006.
+
+<!--
+Local Variables:
+mode: markdown;
+fill column: 72;
+End;
+-->
